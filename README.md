@@ -8,6 +8,10 @@ Nova is an AI assistant that works through the coding agents you already use.
 Nova carries what is yours without flattening what makes each agent distinct.
 Codex stays Codex. Claude Code stays Claude Code.
 
+Nova adds a small, understandable layer of shared context. It does not replace
+native behavior, bury coding agents in rules, or require a complex setup. It
+starts small so different people can use it and evolve it for their own work.
+
 Nova evolves with its owner and stays understandable as it grows.
 
 Current version `0.1.0`. Published releases use a matching `v`-prefixed Git

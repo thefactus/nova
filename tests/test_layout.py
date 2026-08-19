@@ -66,6 +66,9 @@ class CanonicalLayoutTest(unittest.TestCase):
         self.assertIn("Nova is an AI assistant", readme)
         self.assertIn("Nova is the owner's AI assistant", agents)
         self.assertIn("Is Nova just memory between sessions?", readme)
+        self.assertIn("small, understandable layer of shared context", readme)
+        self.assertIn("bury coding agents in rules", readme)
+        self.assertIn("require a complex setup", readme)
 
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"
