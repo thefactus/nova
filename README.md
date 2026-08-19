@@ -88,6 +88,14 @@ memory, knowledge, skills, configuration, and local choices under your control.
 
 ## Why Nova
 
+Nova is inspired by [Hermes Agent](https://github.com/NousResearch/hermes-agent)
+and [OpenClaw](https://github.com/openclaw/openclaw). They showed how memory,
+skills, and continuous learning can make an assistant more useful over time.
+
+Both are broad, general-purpose agent environments. Nova takes a narrower idea
+from them: give the coding agents you already use a shared memory, second brain,
+reusable skills, and a reviewable learning loop.
+
 ### Why not just use Hermes or OpenClaw?
 
 Hermes and OpenClaw provide broader agent environments. Nova takes a smaller
