@@ -72,6 +72,15 @@ class CanonicalLayoutTest(unittest.TestCase):
         self.assertIn("burying coding agents in rules", compact_readme)
         self.assertIn("requiring a complex setup", compact_readme)
 
+    def test_external_project_continuity_has_a_compact_pointer(self) -> None:
+        agents = " ".join(
+            (ROOT / "AGENTS.md").read_text(encoding="utf-8").split()
+        )
+
+        self.assertIn("pointer under `second_brain/projects/`", agents)
+        self.assertIn("name, location, and purpose", agents)
+        self.assertIn("project's own repository", agents)
+
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))

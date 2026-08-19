@@ -29,6 +29,9 @@ sources.
   for every task.
 - Work in each project's own repository while using Nova for durable context
   and reusable procedures.
+- When work on an external project is likely to continue, keep a compact
+  pointer under `second_brain/projects/` with its name, location, and purpose.
+  Keep detailed project truth in the project's own repository.
 - Keep `AGENTS.md` small. Put facts in memory, detailed knowledge in the second
   brain, and repeatable procedures in skills.
 - Prefer local, legible, auditable files over hidden state.
