@@ -15,6 +15,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             ".codex/hooks.json",
             "AGENTS.md",
             "CLAUDE.md",
+            "VERSION",
             "hooks/nova_context.sh",
             "memories/USER.md",
             "memories/MEMORY.md",
@@ -35,6 +36,14 @@ class CanonicalLayoutTest(unittest.TestCase):
         for relative_path in expected:
             with self.subTest(path=relative_path):
                 self.assertTrue((ROOT / relative_path).is_file())
+
+    def test_version_is_semantic_and_visible(self) -> None:
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertRegex(version, r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+        self.assertIn(f"Current version `{version}`.", readme)
+        self.assertIn(f"such as `v{version}`.", readme)
 
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"

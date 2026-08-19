@@ -9,6 +9,33 @@ Codex stays Codex. Claude Code stays Claude Code.
 
 Nova evolves with its owner and stays understandable as it grows.
 
+Current version `0.1.0`. Published releases use a matching `v`-prefixed Git
+tag, such as `v0.1.0`.
+
+## Start using Nova
+
+Nova currently supports macOS and Linux. You need Git, a POSIX shell, and
+either Codex or Claude Code.
+
+1. Download and extract a Nova release.
+2. Put the folder wherever you want your Nova to live.
+3. Start its private history.
+
+   ```sh
+   git init
+   git add .
+   git commit -m "Start my Nova"
+   ```
+
+4. Start `codex` or `claude` from the Nova root.
+
+On first launch, the coding agent may ask whether you trust the folder. Review
+it, then accept to enable Nova's project configuration and hooks. They apply
+only inside that Nova.
+
+Keep your working Nova local or connect it to a private repository. The public
+Nova repository should not be its remote.
+
 ## Continuous learning
 
 Nova learns proactively when something is worth carrying forward. The user
