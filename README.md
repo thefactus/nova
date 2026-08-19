@@ -28,7 +28,9 @@ curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh
 
 Your Nova stays local and is not connected to GitHub.
 
-### Open Nova
+## Use Nova
+
+**Open Nova → Work normally → Keep useful context → Continue later**
 
 From the terminal, start your coding agent in the Nova folder:
 
@@ -36,6 +38,35 @@ From the terminal, start your coding agent in the Nova folder:
 cd ~/nova
 codex  # or: claude
 ```
+
+Then ask it to work normally:
+
+```text
+Work on ~/workspace/acme-api. Add CSV export to reports.
+```
+
+That is it. There are no special Nova commands.
+
+- **Your agents stay the same.** Keep using Codex, Claude Code, or another
+  compatible coding agent.
+- **The context is shared.** Agents started inside Nova can use the same
+  preferences, skills, and second brain.
+- **Memory is selective.** The agent keeps what seems useful later, not
+  everything you say or do.
+- **You remain in control.** Everything is stored in ordinary files you can
+  inspect, edit, remove, and version.
+
+<details>
+<summary><strong>See what Nova may preserve</strong></summary>
+
+- Personal preferences in `memories/USER.md`
+- Project context in `second_brain/projects/`
+- Repeatable workflows as skills or reviewable proposals
+- Nothing when the task produces no durable learning
+
+You can ask the agent to remember something, but you do not have to.
+
+</details>
 
 Prefer a desktop app? Open the Nova folder in the
 [Codex desktop app](https://developers.openai.com/codex/app/). In
