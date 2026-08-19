@@ -4,6 +4,7 @@
 
 Bring your memory, skills, and context to Codex, Claude Code, and more.
 
+Nova is an AI assistant that works through the coding agents you already use.
 Nova carries what is yours without flattening what makes each agent distinct.
 Codex stays Codex. Claude Code stays Claude Code.
 
@@ -130,10 +131,11 @@ Documents preserve information. Nova also tells each coding agent what to load,
 where new knowledge belongs, how skills are shared, and when durable learning
 should be saved.
 
-### Is Nova an AI memory tool?
+### Is Nova just memory between sessions?
 
-No. Memory is one part of Nova. Nova also includes deeper project knowledge,
-skills, shared agent instructions, project-local hooks, and a learning model.
+No. Nova is an AI assistant. Memory between sessions is one of its capabilities,
+along with deeper project knowledge, skills, shared agent instructions,
+project-local hooks, and continuous learning.
 
 ## Structure
 

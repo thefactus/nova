@@ -1,9 +1,8 @@
 # Nova
 
-This directory is the owner's portable AI operating environment. Nova gives
-native coding agents shared memory, knowledge, skills, and learning without
-replacing their identity or software-engineering behavior. No runtime is
-primary.
+Nova is the owner's AI assistant. It works through native coding agents, giving
+them shared memory, knowledge, skills, and learning without replacing their
+identity or software-engineering behavior. No runtime is primary.
 
 ## Session startup
 

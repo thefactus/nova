@@ -59,6 +59,14 @@ class CanonicalLayoutTest(unittest.TestCase):
         )
         self.assertIn("Rotate or revoke it first.", security)
 
+    def test_nova_is_presented_as_an_ai_assistant(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+        self.assertIn("Nova is an AI assistant", readme)
+        self.assertIn("Nova is the owner's AI assistant", agents)
+        self.assertIn("Is Nova just memory between sessions?", readme)
+
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
