@@ -46,14 +46,15 @@ sources. Codex reads `AGENTS.md` directly. Claude Code uses the one-line
 Nova is active only for agents opened from the Nova root. It does not install
 global hooks or inject its context into sessions started elsewhere.
 
-Inside Nova, both runtimes call `hooks/nova_context.py` through their native
-project configuration. At session start, it builds the disposable skill index
-and points the agent to Nova's compact memory. On each prompt, it reminds the
-agent to load only the canonical skills relevant to the task.
+Inside Nova, both runtimes call `hooks/nova_context.sh` through their native
+project configuration. The small POSIX shell hook points the agent to Nova's
+compact memory at session start and reinforces canonical skill routing and the
+learning loop on each prompt. Basic startup does not require Python, Node, or a
+generated skill index.
 
-`python3 -m nova.skills` validates skill metadata and generates
-`.runtime/skill-index.json`. The index is disposable adapter input, not a second
-source of truth.
+When Python is available, `python3 -m nova.skills` can validate skill metadata
+and generate `.runtime/skill-index.json`. The optional index is disposable
+adapter input, not a second source of truth.
 
 ## Public source and your Nova
 

@@ -15,7 +15,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             ".codex/hooks.json",
             "AGENTS.md",
             "CLAUDE.md",
-            "hooks/nova_context.py",
+            "hooks/nova_context.sh",
             "memories/USER.md",
             "memories/MEMORY.md",
             "second_brain/README.md",

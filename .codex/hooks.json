@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 hooks/nova_context.py",
+            "command": "sh hooks/nova_context.sh session-start",
             "timeout": 5,
             "additionalContextLimit": 500,
             "statusMessage": "Loading Nova context"
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 hooks/nova_context.py",
+            "command": "sh hooks/nova_context.sh prompt-submit",
             "timeout": 5,
             "additionalContextLimit": 500,
             "statusMessage": "Routing through Nova skills"

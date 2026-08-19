@@ -2,57 +2,50 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 import unittest
 from pathlib import Path
 
-from nova.skills import discover_skills
-
-
 ROOT = Path(__file__).resolve().parents[1]
-HOOK = ROOT / "hooks" / "nova_context.py"
+HOOK = ROOT / "hooks" / "nova_context.sh"
 
 
 class RuntimeContextTest(unittest.TestCase):
-    def run_hook(self, event: str) -> subprocess.CompletedProcess[str]:
+    def run_hook(self, mode: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(HOOK)],
+            ["/bin/sh", str(HOOK), mode],
             cwd=ROOT,
-            input=json.dumps({"hook_event_name": event}),
+            input="{}",
             capture_output=True,
             text=True,
             check=False,
         )
 
-    def test_session_start_builds_index_and_returns_context(self) -> None:
+    def test_session_start_returns_context_without_building_an_index(self) -> None:
         index_path = ROOT / ".runtime" / "skill-index.json"
         index_path.unlink(missing_ok=True)
 
-        result = self.run_hook("SessionStart")
+        result = self.run_hook("session-start")
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
         output = payload["hookSpecificOutput"]
         self.assertEqual(output["hookEventName"], "SessionStart")
         self.assertIn("memories/USER.md", output["additionalContext"])
-
-        index = json.loads(index_path.read_text(encoding="utf-8"))
-        self.assertEqual(
-            [skill["name"] for skill in index],
-            [skill.name for skill in discover_skills(ROOT)],
-        )
+        self.assertIn("skills/", output["additionalContext"])
+        self.assertFalse(index_path.exists())
 
     def test_prompt_submit_returns_skill_routing_context(self) -> None:
-        result = self.run_hook("UserPromptSubmit")
+        result = self.run_hook("prompt-submit")
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
         output = payload["hookSpecificOutput"]
         self.assertEqual(output["hookEventName"], "UserPromptSubmit")
-        self.assertIn("skill-index.json", output["additionalContext"])
+        self.assertIn("skills/", output["additionalContext"])
+        self.assertIn("durable learning", output["additionalContext"])
 
     def test_unrelated_event_is_ignored(self) -> None:
-        result = self.run_hook("PostToolUse")
+        result = self.run_hook("post-tool-use")
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
@@ -63,13 +56,18 @@ class RuntimeContextTest(unittest.TestCase):
             (ROOT / ".claude/settings.json").read_text(encoding="utf-8")
         )
 
+        expected = {
+            "SessionStart": "sh hooks/nova_context.sh session-start",
+            "UserPromptSubmit": "sh hooks/nova_context.sh prompt-submit",
+        }
         for config in (codex, claude):
             with self.subTest(config=config):
                 events = config["hooks"]
-                self.assertEqual(set(events), {"SessionStart", "UserPromptSubmit"})
-                for registrations in events.values():
+                self.assertEqual(set(events), set(expected))
+                for event, registrations in events.items():
                     command = registrations[0]["hooks"][0]["command"]
-                    self.assertEqual(command, "python3 hooks/nova_context.py")
+                    self.assertEqual(command, expected[event])
+                    self.assertNotIn("python", command)
 
     def test_claude_imports_the_canonical_instructions(self) -> None:
         self.assertEqual((ROOT / "CLAUDE.md").read_text(encoding="utf-8"), "@AGENTS.md\n")
