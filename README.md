@@ -14,20 +14,24 @@ tag, such as `v0.1.0`.
 
 ## Start using Nova
 
-Nova currently supports macOS and Linux. You need Git, a POSIX shell, and
-either Codex or Claude Code.
+Nova currently supports macOS and Linux. You need Git, `curl`, a POSIX shell,
+and either Codex or Claude Code.
 
-1. Download and extract a Nova release.
-2. Put the folder wherever you want your Nova to live.
-3. Start its private history.
+Install the latest release at `~/nova`:
 
-   ```sh
-   git init
-   git add .
-   git commit -m "Start my Nova"
-   ```
+```sh
+curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh | sh
+```
 
-4. Start `codex` or `claude` from the Nova root.
+Pass a different destination when needed:
+
+```sh
+curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh | sh -s -- /path/to/nova
+```
+
+The installer verifies the release, creates a new Git repository on `main`,
+and makes the first commit. It does not configure a remote. Start `codex` or
+`claude` from the new Nova root.
 
 On first launch, the coding agent may ask whether you trust the folder. Review
 it, then accept to enable Nova's project configuration and hooks. They apply

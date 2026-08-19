@@ -17,6 +17,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             "CLAUDE.md",
             "VERSION",
             "hooks/nova_context.sh",
+            "install.sh",
             "memories/USER.md",
             "memories/MEMORY.md",
             "second_brain/README.md",
@@ -31,6 +32,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             "skills/curate-skill-learning/SKILL.md",
             "skills/update-nova/SKILL.md",
             "skills/update-nova/agents/openai.yaml",
+            "scripts/build-release.sh",
         ]
 
         for relative_path in expected:
@@ -40,10 +42,12 @@ class CanonicalLayoutTest(unittest.TestCase):
     def test_version_is_semantic_and_visible(self) -> None:
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
 
         self.assertRegex(version, r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
         self.assertIn(f"Current version `{version}`.", readme)
         self.assertIn(f"such as `v{version}`.", readme)
+        self.assertIn(f"NOVA_INSTALL_VERSION={version}\n", installer)
 
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"
