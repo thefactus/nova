@@ -47,9 +47,9 @@ git remote
 The first two commands should print `main` and `Start my Nova`. The last command
 should print nothing.
 
-On first launch, the coding agent may ask whether you trust the folder. Review
-it, then accept to enable Nova's project configuration and hooks. They apply
-only inside that Nova.
+On first launch, the coding agent may ask you to trust the folder and review
+its project hooks. Review them, then accept to enable Nova's project
+configuration. It applies only inside that Nova.
 
 Keep your working Nova local or connect it to a private repository. The public
 Nova repository should not be its remote.
