@@ -1,0 +1,4 @@
+interface:
+  display_name: "Curate Skill Learning"
+  short_description: "Review and resolve Nova skill proposals"
+  default_prompt: "Use $curate-skill-learning to review my pending Nova skill proposals one at a time."

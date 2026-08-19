@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Nova learning review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["classification", "memory_entries", "skill_proposals", "summary"],
+  "properties": {
+    "classification": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["none", "memory", "skill_improvement", "new_skill"]
+      }
+    },
+    "memory_entries": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "entry", "reason"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": ["USER.md", "MEMORY.md"]
+          },
+          "entry": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "skill_proposals": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "target_skill",
+          "target_ownership",
+          "owner_hint",
+          "action",
+          "change_summary",
+          "rationale",
+          "proposed_content"
+        ],
+        "properties": {
+          "target_skill": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "target_ownership": {
+            "type": "string",
+            "enum": [
+              "canonical",
+              "repository",
+              "company",
+              "external",
+              "managed",
+              "new",
+              "unknown"
+            ]
+          },
+          "owner_hint": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "action": {
+            "type": "string",
+            "enum": ["patch", "create"]
+          },
+          "change_summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "proposed_content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  }
+}

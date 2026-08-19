@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Nova skill learning proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "status",
+    "created_at",
+    "target_skill",
+    "target_ownership",
+    "action",
+    "change_summary",
+    "rationale",
+    "proposed_content",
+    "history"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected", "applied"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_summary": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "target_skill": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "target_ownership": {
+      "type": "string",
+      "enum": [
+        "canonical",
+        "repository",
+        "company",
+        "external",
+        "managed",
+        "new",
+        "unknown"
+      ]
+    },
+    "owner_hint": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "action": {
+      "type": "string",
+      "enum": ["patch", "create"]
+    },
+    "change_summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "proposed_content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12000
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "at", "note"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected", "applied"]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      }
+    }
+  }
+}
