@@ -13,6 +13,7 @@ class CanonicalLayoutTest(unittest.TestCase):
         expected = [
             ".claude/settings.json",
             ".codex/hooks.json",
+            ".github/workflows/verify.yml",
             "AGENTS.md",
             "CLAUDE.md",
             "SECURITY.md",

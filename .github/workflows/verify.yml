@@ -1,0 +1,50 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Python for development tests
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate POSIX shell
+        run: |
+          sh -n hooks/nova_context.sh
+          sh -n install.sh
+          sh -n scripts/build-release.sh
+
+      - name: Validate JSON
+        run: find . -name '*.json' -not -path './.git/*' -exec python -m json.tool '{}' \; >/dev/null
+
+      - name: Build release assets
+        run: ./scripts/build-release.sh
