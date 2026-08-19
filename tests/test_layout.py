@@ -15,6 +15,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             ".codex/hooks.json",
             "AGENTS.md",
             "CLAUDE.md",
+            "SECURITY.md",
             "VERSION",
             "hooks/nova_context.sh",
             "install.sh",
@@ -48,6 +49,15 @@ class CanonicalLayoutTest(unittest.TestCase):
         self.assertIn(f"Current version `{version}`.", readme)
         self.assertIn(f"such as `v{version}`.", readme)
         self.assertIn(f"NOVA_INSTALL_VERSION={version}\n", installer)
+
+    def test_public_security_channel_is_visible(self) -> None:
+        security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "https://github.com/thefactus/nova/security/advisories/new",
+            security,
+        )
+        self.assertIn("Rotate or revoke it first.", security)
 
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"

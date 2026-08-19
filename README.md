@@ -33,6 +33,18 @@ The installer verifies the release, creates a new Git repository on `main`,
 and makes the first commit. It does not configure a remote. Start `codex` or
 `claude` from the new Nova root.
 
+Verify the local repository:
+
+```sh
+cd ~/nova
+git branch --show-current
+git log -1 --pretty=%s
+git remote
+```
+
+The first two commands should print `main` and `Start my Nova`. The last command
+should print nothing.
+
 On first launch, the coding agent may ask whether you trust the folder. Review
 it, then accept to enable Nova's project configuration and hooks. They apply
 only inside that Nova.
@@ -84,6 +96,15 @@ learning loop on each prompt. Basic startup requires only POSIX shell.
 
 Agents discover skills directly from their canonical frontmatter.
 
+## Current scope
+
+Nova `0.1.0` supports Codex and Claude Code on macOS and Linux. Memory,
+second-brain knowledge, skills, project-local hooks, and agent-native learning
+are available today.
+
+Windows, additional coding agents, a web interface, automatic upgrades, and
+deterministic secret scanning are not included yet.
+
 ## Public source and your Nova
 
 This repository is Nova's public source. A person's working Nova is created
@@ -95,6 +116,25 @@ Updates should keep the owner's memory, knowledge, skills, configuration, and
 local intent under their control. Nova's bundled `update-nova` skill guides the
 agent through understanding and applying those changes.
 
+## Why Nova
+
+### Why not just use Hermes or OpenClaw?
+
+Use a complete agent harness when that is what you want. Nova is for people who
+want to keep using Codex, Claude Code, and other native coding agents while
+sharing one understandable environment across them.
+
+### Why not just use documents?
+
+Documents preserve information. Nova also tells each coding agent what to load,
+where new knowledge belongs, how skills are shared, and when durable learning
+should be saved.
+
+### Is Nova an AI memory tool?
+
+No. Memory is one part of Nova. Nova also includes deeper project knowledge,
+skills, shared agent instructions, project-local hooks, and a learning model.
+
 ## Structure
 
 - `memories/` keeps compact durable context.
@@ -104,3 +144,5 @@ agent through understanding and applying those changes.
 
 Your working Nova can contain personal and company context. Keep it in a
 private repository unless you intentionally want that context to be public.
+
+Security reporting and credential guidance are in [`SECURITY.md`](SECURITY.md).
