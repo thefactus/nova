@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Nova"
+  short_description: "Update Nova while preserving owner context"
+  default_prompt: "Use $update-nova to help me update my Nova safely and clearly."
