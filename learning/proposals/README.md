@@ -7,5 +7,5 @@ Skill changes move through four directories.
 - `rejected/` preserves declined proposals and their reason.
 - `applied/` preserves the audit history of completed changes.
 
-The learning system creates these state directories only when needed. A
+The active coding agent creates these state directories only when needed. The
 curator moves one proposal at a time after an explicit owner decision.

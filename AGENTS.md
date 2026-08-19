@@ -12,10 +12,9 @@ Before substantive work:
 1. Read `memories/USER.md` when it exists to learn the owner's durable working
    preferences.
 2. Read `memories/MEMORY.md` when it exists to recover durable context.
-3. Use `.runtime/skill-index.json` to review skill names, descriptions, and
-   canonical paths when the generated index exists. Otherwise, review the
-   frontmatter under `skills/`. If a skill clearly matches the task, read its
-   complete `SKILL.md` and follow it before acting.
+3. Review skill names and descriptions in the frontmatter under `skills/`. If
+   a skill clearly matches the task, read its complete `SKILL.md` and follow it
+   before acting.
 4. Consult `second_brain/` only when the task needs deeper project history,
    decisions, communications, or captured knowledge.
 
@@ -85,7 +84,9 @@ across memory, notes, and skills.
 
 Skill-learning proposals remain pending until reviewed through
 `curate-skill-learning`. Existing skills are protected and require the owner's
-explicit approval before modification.
+explicit approval before modification. Write Nova-owned proposals under
+`learning/proposals/pending/` using `learning/proposal-schema.json`; route
+learning owned elsewhere to `learning/feedback/`.
 
 ## Evolution
 

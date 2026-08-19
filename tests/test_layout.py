@@ -24,14 +24,12 @@ class CanonicalLayoutTest(unittest.TestCase):
             "second_brain/projects/README.md",
             "skills/README.md",
             "learning/README.md",
-            "learning/config.json",
+            "learning/proposal-schema.json",
             "learning/proposals/README.md",
             "learning/feedback/README.md",
             "skills/curate-skill-learning/SKILL.md",
-            "skills/curate-skill-learning/scripts/curator.py",
             "skills/update-nova/SKILL.md",
             "skills/update-nova/agents/openai.yaml",
-            "nova/skills.py",
         ]
 
         for relative_path in expected:
@@ -48,19 +46,20 @@ class CanonicalLayoutTest(unittest.TestCase):
             ["pending", "approved", "rejected", "applied"],
         )
         self.assertIn("history", schema["required"])
+        self.assertEqual(schema["properties"]["history"]["minItems"], 1)
 
-    def test_review_schema_is_runtime_neutral(self) -> None:
-        schema_path = ROOT / "learning/review-schema.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    def test_agent_native_learning_has_no_product_runtime(self) -> None:
+        removed_runtime_paths = [
+            "learning/config.json",
+            "learning/review-schema.json",
+            "nova/learning.py",
+            "nova/skills.py",
+            "skills/curate-skill-learning/scripts/curator.py",
+        ]
 
-        self.assertEqual(
-            set(schema["required"]),
-            {"classification", "memory_entries", "skill_proposals", "summary"},
-        )
-        self.assertEqual(
-            schema["properties"]["memory_entries"]["maxItems"],
-            3,
-        )
+        for relative_path in removed_runtime_paths:
+            with self.subTest(path=relative_path):
+                self.assertFalse((ROOT / relative_path).exists())
 
 
 if __name__ == "__main__":

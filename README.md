@@ -31,8 +31,8 @@ Nova is runtime-agnostic. Its memory, knowledge, skills, and learning rules are
 canonical; Codex, Claude Code, and future agents can connect to the same sources
 without one runtime becoming the primary one.
 
-Nova's shared code validates compact memory entries and runtime-neutral learning
-reviews without giving any runtime its own private copy.
+The active coding agent classifies learning and updates Nova's readable files
+directly. There is no background reviewer or separate Nova runtime.
 
 Proposed skill changes remain pending until the owner reviews them through
 Nova's bundled `curate-skill-learning` skill.
@@ -49,12 +49,9 @@ global hooks or inject its context into sessions started elsewhere.
 Inside Nova, both runtimes call `hooks/nova_context.sh` through their native
 project configuration. The small POSIX shell hook points the agent to Nova's
 compact memory at session start and reinforces canonical skill routing and the
-learning loop on each prompt. Basic startup does not require Python, Node, or a
-generated skill index.
+learning loop on each prompt. Basic startup requires only POSIX shell.
 
-When Python is available, `python3 -m nova.skills` can validate skill metadata
-and generate `.runtime/skill-index.json`. The optional index is disposable
-adapter input, not a second source of truth.
+Agents discover skills directly from their canonical frontmatter.
 
 ## Public source and your Nova
 
@@ -72,8 +69,7 @@ agent through understanding and applying those changes.
 - `memories/` keeps compact durable context.
 - `second_brain/` keeps deeper knowledge and history.
 - `skills/` keeps reusable procedures shared by every runtime.
-- `learning/` keeps learning configuration, skill proposals, and ownership feedback reviewable.
-- `nova/` contains shared learning and skill-discovery behavior.
+- `learning/` keeps skill proposals and ownership feedback reviewable.
 
 Your working Nova can contain personal and company context. Keep it in a
 private repository unless you intentionally want that context to be public.
