@@ -62,13 +62,14 @@ class CanonicalLayoutTest(unittest.TestCase):
     def test_nova_is_presented_as_an_ai_assistant(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        compact_readme = " ".join(readme.split())
 
         self.assertIn("Nova is an AI assistant", readme)
         self.assertIn("Nova is the owner's AI assistant", agents)
         self.assertIn("Is Nova just memory between sessions?", readme)
-        self.assertIn("small, understandable layer of shared context", readme)
-        self.assertIn("bury coding agents in rules", readme)
-        self.assertIn("require a complex setup", readme)
+        self.assertIn("small, understandable layer of shared context", compact_readme)
+        self.assertIn("burying coding agents in rules", compact_readme)
+        self.assertIn("requiring a complex setup", compact_readme)
 
     def test_proposal_schema_defines_the_review_states(self) -> None:
         schema_path = ROOT / "learning/proposal-schema.json"
