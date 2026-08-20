@@ -62,12 +62,12 @@ Prefer treating one-off directions and task-specific corrections as session
 context. Promote them to durable memory only when they clearly express a
 preference likely to help in unrelated future sessions.
 
-### Writing canonical guidance
+### Respect the audience boundary
 
-Prefer writing canonical guidance as a self-contained result for its future
-reader. Keep conversational history, internal deliberation, and rejected
-alternatives in project history unless they are necessary to interpret the
-guidance.
+Before producing an artifact for someone else, write from what that audience
+knows and needs. Use internal discussion to shape the result, but do not carry
+it into the output unless it is necessary for the audience to understand or
+act.
 
 ## Learning loop
 
