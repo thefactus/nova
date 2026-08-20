@@ -31,6 +31,8 @@ class CanonicalLayoutTest(unittest.TestCase):
             "learning/proposal-schema.json",
             "learning/proposals/README.md",
             "learning/feedback/README.md",
+            "skills/capture/SKILL.md",
+            "skills/capture/agents/openai.yaml",
             "skills/curate-skill-learning/SKILL.md",
             "skills/update-nova/SKILL.md",
             "skills/update-nova/agents/openai.yaml",
@@ -105,6 +107,15 @@ class CanonicalLayoutTest(unittest.TestCase):
         for relative_path in removed_runtime_paths:
             with self.subTest(path=relative_path):
                 self.assertFalse((ROOT / relative_path).exists())
+
+    def test_public_skills_have_no_private_source_assumptions(self) -> None:
+        private_markers = ["/Users/", "Pablo", "Stitch Fix"]
+
+        for skill_path in (ROOT / "skills").glob("*/SKILL.md"):
+            contents = skill_path.read_text(encoding="utf-8")
+            for marker in private_markers:
+                with self.subTest(skill=skill_path.parent.name, marker=marker):
+                    self.assertNotIn(marker, contents)
 
 
 if __name__ == "__main__":

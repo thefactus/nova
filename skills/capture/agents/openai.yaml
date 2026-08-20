@@ -1,0 +1,4 @@
+interface:
+  display_name: "Capture"
+  short_description: "Save useful material to your Nova second brain"
+  default_prompt: "Use $capture to save this in my Nova second brain."

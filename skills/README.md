@@ -6,8 +6,9 @@ Each skill lives at `skills/<name>/SKILL.md` and starts with a name and a clear
 description of when it should be used. Agents discover skills here directly;
 this directory is the canonical source.
 
-Nova bundles `curate-skill-learning`, which keeps proposed skill changes under
-explicit owner control, and `update-nova`, which guides changes to a working
+Nova bundles `capture`, which saves useful source material into the second
+brain; `curate-skill-learning`, which keeps proposed skill changes under
+explicit owner control; and `update-nova`, which guides changes to a working
 Nova while preserving its owner's context. Every public skill should be
 designed for Nova and reviewed for private paths, company knowledge,
 credentials, and hidden runtime assumptions before it is added.
