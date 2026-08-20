@@ -1,0 +1,4 @@
+interface:
+  display_name: "Organize Project Knowledge"
+  short_description: "Keep project context clear as it grows"
+  default_prompt: "Use $organize-project-knowledge to organize this project context."
