@@ -1,0 +1,4 @@
+interface:
+  display_name: "Herdr"
+  short_description: "Orchestrate coding agents with Herdr"
+  default_prompt: "Use $herdr to coordinate coding agents for this task."
