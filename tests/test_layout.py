@@ -34,6 +34,8 @@ class CanonicalLayoutTest(unittest.TestCase):
             "skills/capture/SKILL.md",
             "skills/capture/agents/openai.yaml",
             "skills/curate-skill-learning/SKILL.md",
+            "skills/skill-library-audit/SKILL.md",
+            "skills/skill-library-audit/agents/openai.yaml",
             "skills/update-nova/SKILL.md",
             "skills/update-nova/agents/openai.yaml",
             "scripts/build-release.sh",

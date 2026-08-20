@@ -8,7 +8,8 @@ this directory is the canonical source.
 
 Nova bundles `capture`, which saves useful source material into the second
 brain; `curate-skill-learning`, which keeps proposed skill changes under
-explicit owner control; and `update-nova`, which guides changes to a working
+explicit owner control; `skill-library-audit`, which reviews the library for
+structure and overlap; and `update-nova`, which guides changes to a working
 Nova while preserving its owner's context. Every public skill should be
 designed for Nova and reviewed for private paths, company knowledge,
 credentials, and hidden runtime assumptions before it is added.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Library Audit"
+  short_description: "Review and simplify your Nova skill library"
+  default_prompt: "Use $skill-library-audit to review my Nova skill library."
