@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,10 +11,12 @@ HOOK = ROOT / "hooks" / "nova_context.sh"
 
 
 class RuntimeContextTest(unittest.TestCase):
-    def run_hook(self, mode: str) -> subprocess.CompletedProcess[str]:
+    def run_hook(
+        self, mode: str, cwd: Path = ROOT
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["/bin/sh", str(HOOK), mode],
-            cwd=ROOT,
+            cwd=cwd,
             input="{}",
             capture_output=True,
             text=True,
@@ -32,6 +35,7 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertEqual(output["hookEventName"], "SessionStart")
         self.assertIn("memories/USER.md", output["additionalContext"])
         self.assertIn("skills/", output["additionalContext"])
+        self.assertIn("config.yaml", output["additionalContext"])
         self.assertFalse(index_path.exists())
 
     def test_prompt_submit_returns_skill_routing_context(self) -> None:
@@ -43,6 +47,50 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertEqual(output["hookEventName"], "UserPromptSubmit")
         self.assertIn("skills/", output["additionalContext"])
         self.assertIn("durable learning", output["additionalContext"])
+        self.assertIn("skills.write_approval", output["additionalContext"])
+        self.assertIn("autonomously", output["additionalContext"])
+
+    def test_prompt_submit_surfaces_enabled_write_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_path = Path(temporary)
+            (temporary_path / "config.yaml").write_text(
+                "skills:\n  write_approval: TRUE\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_hook("prompt-submit", cwd=temporary_path)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("skills.write_approval=true", context)
+        self.assertIn("owner review", context)
+
+    def test_prompt_submit_fails_safe_for_invalid_write_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_path = Path(temporary)
+            (temporary_path / "config.yaml").write_text(
+                "skills:\n  write_approval: invalid\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_hook("prompt-submit", cwd=temporary_path)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("skills.write_approval=true", context)
+        self.assertIn("owner review", context)
+
+    def test_prompt_submit_defaults_to_autonomous_without_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.run_hook("prompt-submit", cwd=Path(temporary))
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("skills.write_approval=false", context)
+        self.assertIn("autonomously", context)
 
     def test_unrelated_event_is_ignored(self) -> None:
         result = self.run_hook("post-tool-use")

@@ -61,7 +61,7 @@ That is it. There are no special Nova commands.
 
 - Personal preferences in `memories/USER.md`
 - Project context in `second_brain/projects/`
-- Repeatable workflows as skills or reviewable proposals
+- Repeatable workflows as autonomously improved skills, or reviewable changes
 - Nothing when the task produces no durable learning
 
 You can ask the agent to remember something, but you do not have to.
@@ -89,10 +89,11 @@ as its remote. That repository distributes Nova itself, not your personal data.
 Nova is made of ordinary files you can inspect, edit, and version with Git.
 
 - `AGENTS.md` tells each supported coding agent how to use Nova.
+- `config.yaml` controls whether skill changes are autonomous or reviewed.
 - `memories/` helps agents remember your preferences and important context.
 - `second_brain/` holds detailed knowledge and project history.
 - `skills/` holds reusable ways of doing recurring work.
-- `learning/` holds proposed skill changes until you review them.
+- `learning/` holds staged skill changes when approval is enabled.
 
 Codex reads `AGENTS.md` directly. Claude Code reaches the same instructions
 through the one-line `CLAUDE.md` bridge. Project-local hooks remind both agents
@@ -101,11 +102,30 @@ to load the same files without changing how they work outside Nova.
 Nova is active only when a coding agent starts from the Nova root. During normal
 work, the agent can save durable learning to the appropriate readable file.
 
+### Skill learning
+
+Nova creates and improves its canonical skills autonomously when completed work
+reveals a durable, reusable procedure. Changes remain ordinary local files and
+visible Git diffs. Speculative or one-off observations should not change a
+skill, and deletion always requires explicit owner authorization.
+
+Autonomous skill writes are the default:
+
+```yaml
+skills:
+  write_approval: false
+```
+
+Set `skills.write_approval` to `true` in `config.yaml` to stage every skill
+creation or update under `learning/proposals/pending/`. Review staged changes
+through the bundled `curate-skill-learning` skill. Switching the setting does
+not apply proposals that were already pending.
+
 ## Current scope
 
 Nova `0.1.0` is tested with Codex and Claude Code on macOS and Linux. It includes
 shared memory, second-brain knowledge, reusable skills, project-local hooks, and
-learning that keeps skill changes under your review.
+autonomous skill learning with optional write approval.
 
 Other operating systems and coding agents have not been tested yet. A web
 interface, automatic upgrades, and built-in secret scanning are not part of
@@ -125,7 +145,7 @@ skills, and continuous learning can make an assistant more useful over time.
 
 Both are broad, general-purpose agent environments. Nova takes a narrower idea
 from them: give the coding agents you already use a shared memory, second brain,
-reusable skills, and a reviewable learning loop.
+reusable skills, and an autonomous learning loop with optional review.
 
 ### Why not just use Hermes or OpenClaw?
 
@@ -144,8 +164,8 @@ knowledge, how to reuse skills, and when to preserve learning.
 
 No. Nova is an AI assistant, and memory between sessions is only one part of it.
 It also gives your coding agents deeper project knowledge, reusable skills,
-shared instructions, local hooks, and a way to improve while keeping changes
-reviewable.
+shared instructions, local hooks, and a way to improve autonomously while
+keeping review available when you want it.
 
 ## Security
 

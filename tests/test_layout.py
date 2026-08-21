@@ -16,6 +16,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             ".github/workflows/verify.yml",
             "AGENTS.md",
             "CLAUDE.md",
+            "config.yaml",
             "SECURITY.md",
             "VERSION",
             "hooks/nova_context.sh",
@@ -101,6 +102,15 @@ class CanonicalLayoutTest(unittest.TestCase):
         )
         self.assertIn("history", schema["required"])
         self.assertEqual(schema["properties"]["history"]["minItems"], 1)
+
+    def test_skill_writes_are_autonomous_by_default_with_optional_review(self) -> None:
+        config = (ROOT / "config.yaml").read_text(encoding="utf-8")
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+        self.assertEqual(config, "skills:\n  write_approval: false\n")
+        self.assertIn("apply justified skill creations", agents)
+        self.assertIn("When it is `true`, stage them", agents)
+        self.assertIn("never delete a skill", agents)
 
     def test_agent_native_learning_has_no_product_runtime(self) -> None:
         removed_runtime_paths = [

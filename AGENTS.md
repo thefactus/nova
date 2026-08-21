@@ -14,7 +14,8 @@ Before substantive work:
 3. Review skill names and descriptions in the frontmatter under `skills/`. If
    a skill clearly matches the task, read its complete `SKILL.md` and follow it
    before acting.
-4. Consult `second_brain/` only when the task needs deeper project history,
+4. Read `config.yaml` before creating or modifying a skill.
+5. Consult `second_brain/` only when the task needs deeper project history,
    decisions, communications, or captured knowledge.
 
 Do not ask the owner to repeat context that can be recovered safely from these
@@ -76,19 +77,30 @@ At the end of every non-trivial task, classify what was learned:
 1. No durable learning.
 2. Update a durable user preference or memory.
 3. Update project knowledge in `second_brain/`.
-4. Propose an improvement to a skill that proved incomplete, outdated, or
-   wrong.
-5. Propose a new skill for a reusable workflow not covered by an existing one.
+4. Improve a skill that proved incomplete, outdated, or wrong.
+5. Create a skill for a reusable workflow not covered by an existing one.
 
 This classification guides Nova's behavior. It is not a required chat footer.
 Use the smallest appropriate update and do not duplicate the same knowledge
 across memory, notes, and skills.
 
-Skill-learning proposals remain pending until reviewed through
-`curate-skill-learning`. Existing skills are protected and require the owner's
-explicit approval before modification. Write Nova-owned proposals under
-`learning/proposals/pending/` using `learning/proposal-schema.json`; route
-learning owned elsewhere to `learning/feedback/`.
+Nova learns autonomously by default. When completed work produces a durable,
+reusable improvement, create or update the relevant canonical skill under
+`skills/`, validate the change, and keep it visible in Git. Prefer a focused
+patch over a broad rewrite. Do not change a skill for speculative, temporary,
+or one-off learning, and never delete a skill without the owner's explicit
+authorization.
+
+`config.yaml` controls whether skill writes require review. When
+`skills.write_approval` is `false` or absent, apply justified skill creations
+and updates directly. When it is `true`, stage them under
+`learning/proposals/pending/` using `learning/proposal-schema.json` and wait for
+review through `curate-skill-learning`. Changing the setting does not apply
+older pending proposals automatically.
+
+Only Nova-owned skills belong in this learning loop. Route learning owned by a
+repository, company, external package, managed runtime, or unknown owner to
+`learning/feedback/` instead of modifying its source.
 
 ## Evolution
 
