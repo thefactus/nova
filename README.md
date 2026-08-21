@@ -26,6 +26,15 @@ memory, skills, and configuration:
 curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh | sh
 ```
 
+Prefer another location? Pass the destination after `sh -s --`:
+
+```sh
+curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh | sh -s -- "$HOME/ai/nova"
+```
+
+The destination must not already exist. Nova creates its parent directories
+when needed.
+
 Your Nova stays local and is not connected to GitHub.
 
 ## Use Nova
@@ -38,6 +47,8 @@ From the terminal, start your coding agent in the Nova folder:
 cd ~/nova
 codex  # or: claude
 ```
+
+If you installed Nova somewhere else, use that directory instead.
 
 Then ask it to work normally:
 

@@ -146,6 +146,25 @@ class InstallerTest(unittest.TestCase):
             self.assertIn("destination already exists", result.stderr)
             self.assertEqual(sentinel.read_text(encoding="utf-8"), "keep\n")
 
+    def test_installs_at_an_explicit_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_path = Path(temporary)
+            release_root = temporary_path / "releases"
+            self.create_fake_release(release_root)
+            home = temporary_path / "home"
+            destination = temporary_path / "custom" / "nova-home"
+
+            result = self.run_installer(release_root, destination, home)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                (destination / "VERSION").read_text(encoding="utf-8"),
+                f"{VERSION}\n",
+            )
+            self.assertTrue((destination / ".git").is_dir())
+            self.assertFalse((home / "nova").exists())
+            self.assertIn(f"ready at {destination}", result.stdout)
+
     def test_rejects_a_release_with_the_wrong_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             temporary_path = Path(temporary)
