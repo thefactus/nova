@@ -2,7 +2,7 @@
 
 set -eu
 
-NOVA_INSTALL_VERSION=0.1.0
+NOVA_INSTALL_VERSION=0.1.1
 NOVA_RELEASE_BASE_URL=${NOVA_RELEASE_BASE_URL:-https://github.com/thefactus/nova/releases/download}
 
 fail() {
@@ -117,6 +117,7 @@ else
     git -C "$extracted_directory" commit -q -m "Start my Nova"
 fi
 
+[ ! -e "$destination" ] || fail "destination already exists: $destination"
 mv "$extracted_directory" "$destination"
 
 quoted_destination=$(printf '%s' "$destination" | sed "s/'/'\\\\''/g")
