@@ -152,7 +152,7 @@ class InstallerTest(unittest.TestCase):
             release_root = temporary_path / "releases"
             self.create_fake_release(release_root)
             home = temporary_path / "home"
-            destination = temporary_path / "custom" / "nova-home"
+            destination = temporary_path / "custom path" / "owner's nova"
 
             result = self.run_installer(release_root, destination, home)
 
@@ -164,6 +164,21 @@ class InstallerTest(unittest.TestCase):
             self.assertTrue((destination / ".git").is_dir())
             self.assertFalse((home / "nova").exists())
             self.assertIn(f"ready at {destination}", result.stdout)
+            cd_command = next(
+                line.strip()
+                for line in result.stdout.splitlines()
+                if line.strip().startswith("cd ")
+            )
+            changed_directory = subprocess.run(
+                ["/bin/sh", "-c", f"{cd_command}\npwd"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertEqual(changed_directory.stdout.strip(), str(destination))
+            self.assertIn(
+                "Start your coding agent from that directory.", result.stdout
+            )
 
     def test_rejects_a_release_with_the_wrong_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

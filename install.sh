@@ -28,7 +28,7 @@ calculate_sha256() {
   fail "required command not found: sha256sum or shasum"
 }
 
-for command_name in curl git tar awk mktemp; do
+for command_name in curl git tar awk mktemp sed; do
   require_command "$command_name"
 done
 
@@ -119,5 +119,9 @@ fi
 
 mv "$extracted_directory" "$destination"
 
+quoted_destination=$(printf '%s' "$destination" | sed "s/'/'\\\\''/g")
+
 printf '\nNova %s is ready at %s\n' "$version" "$destination"
-printf 'Start Codex or Claude Code from that directory.\n'
+printf '\nNext:\n'
+printf "  cd '%s'\n" "$quoted_destination"
+printf '\nStart your coding agent from that directory.\n'
