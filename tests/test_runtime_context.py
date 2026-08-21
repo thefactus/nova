@@ -35,7 +35,9 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertEqual(output["hookEventName"], "SessionStart")
         self.assertIn("memories/USER.md", output["additionalContext"])
         self.assertIn("skills/", output["additionalContext"])
+        self.assertIn("Nova skills are additive", output["additionalContext"])
         self.assertIn("config.yaml", output["additionalContext"])
+        self.assertLessEqual(len(output["additionalContext"]), 500)
         self.assertFalse(index_path.exists())
 
     def test_prompt_submit_returns_skill_routing_context(self) -> None:

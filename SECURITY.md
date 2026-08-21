@@ -4,6 +4,18 @@
 
 Security fixes are provided for the latest published Nova release.
 
+## Skills outside Nova
+
+Native coding agents may expose user-level, global, project, plugin, managed,
+or built-in skills alongside Nova's canonical library. Nova's root activation
+does not audit, sandbox, hide, or disable those external sources. Review skills
+before installing them and manage their trust through the runtime or source
+that owns them.
+
+Nova may use a relevant external skill, but its autonomous learning loop must
+not modify or delete that source. External skill learning belongs with its
+owner rather than in Nova's canonical library.
+
 ## Report a vulnerability
 
 Do not open a public issue with vulnerability details. Use GitHub's private

@@ -39,6 +39,28 @@ sources.
 - Preserve the native runtime's identity, tools, permissions, and coding
   behavior.
 
+## Skill sources and precedence
+
+Nova's canonical `skills/` library is additive. The native runtime may also
+expose user-level, global, project-level, plugin, managed, or built-in skills.
+Starting a session from Nova does not hide or disable those other sources, and
+it does not create an isolated skill environment.
+
+When more than one skill appears applicable:
+
+- prefer the skill whose trigger and ownership most specifically match the
+  task;
+- for Nova's own files, learning, updates, and organization, prefer the
+  relevant Nova-owned skill over a generic external equivalent;
+- combine skills only when their procedures are compatible;
+- do not assume same-named skills from different sources are interchangeable;
+- if instructions materially conflict and higher-priority instructions do not
+  resolve the conflict, identify it and take the safer non-destructive path.
+
+Using an external skill does not make it Nova-owned. Do not copy, rewrite, or
+delete global, project, plugin, managed, built-in, or otherwise externally
+owned skills as part of Nova's autonomous learning loop.
+
 ## Knowledge placement
 
 - `memories/USER.md` holds durable preferences about the owner and how to

@@ -112,6 +112,18 @@ class CanonicalLayoutTest(unittest.TestCase):
         self.assertIn("When it is `true`, stage them", agents)
         self.assertIn("never delete a skill", agents)
 
+    def test_nova_skills_are_additive_without_owning_external_sources(self) -> None:
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        compact_security = " ".join(security.split())
+
+        self.assertIn("canonical `skills/` library is additive", agents)
+        self.assertIn("does not create an isolated skill environment", agents)
+        self.assertIn("not skill-isolated", readme)
+        self.assertIn("does not audit, sandbox, hide, or disable", security)
+        self.assertIn("must not modify or delete that source", compact_security)
+
     def test_agent_native_learning_has_no_product_runtime(self) -> None:
         removed_runtime_paths = [
             "learning/config.json",

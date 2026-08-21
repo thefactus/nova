@@ -121,6 +121,19 @@ creation or update under `learning/proposals/pending/`. Review staged changes
 through the bundled `curate-skill-learning` skill. Switching the setting does
 not apply proposals that were already pending.
 
+### Other installed skills
+
+Nova adds its canonical `skills/` library to the coding agent's normal
+environment. It does not hide skills the runtime already exposes from user or
+global directories, the active project, plugins, managed packages, or built-in
+sources. Starting from Nova is therefore root-activated, but not skill-isolated.
+
+When skills overlap, the agent should prefer the most specific procedure for
+the task and its owner. Nova-owned skills take precedence for maintaining Nova
+itself. Compatible skills may be combined; materially conflicting skills should
+not be blended silently. Nova's autonomous learning changes only its own
+canonical skills, never external sources.
+
 ## Current scope
 
 Nova `0.1.0` is tested with Codex and Claude Code on macOS and Linux. It includes
