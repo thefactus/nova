@@ -22,7 +22,7 @@
             "type": "command",
             "command": "sh hooks/nova_context.sh prompt-submit",
             "timeout": 5,
-            "additionalContextLimit": 900,
+            "additionalContextLimit": 1100,
             "statusMessage": "Routing through Nova skills"
           }
         ]

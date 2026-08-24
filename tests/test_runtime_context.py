@@ -106,7 +106,11 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertIn("Do not stop at classification", output["additionalContext"])
         self.assertIn("skills.write_approval", output["additionalContext"])
         self.assertIn("autonomously", output["additionalContext"])
-        self.assertLessEqual(len(output["additionalContext"]), 500)
+        self.assertIn("focused local commit", output["additionalContext"])
+        self.assertIn("attributable task changes", output["additionalContext"])
+        self.assertIn("Leave unrelated changes untouched", output["additionalContext"])
+        self.assertIn("never publish without explicit authorization", output["additionalContext"])
+        self.assertLessEqual(len(output["additionalContext"]), 750)
 
     def test_prompt_submit_surfaces_enabled_write_approval(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -203,6 +207,7 @@ class RuntimeContextTest(unittest.TestCase):
             "additionalContext"
         ]
         self.assertIn("Periodic learning review is due", context)
+        self.assertLessEqual(len(context), 1100)
         self.assertFalse(due_after_next_prompt)
         self.assertEqual(turn_count, "1\n")
 

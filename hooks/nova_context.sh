@@ -295,11 +295,11 @@ case "${1:-}" in
     record_periodic_turn
     active_policy=$(skill_write_policy)
     if [ "$periodic_review_due" = true ]; then
-      periodic_review_context='\n5. Periodic learning review is due. During this turn, inspect recent completed work for durable corrections, missing skill steps, or an uncovered repeated workflow. Apply the smallest justified Nova-owned change under the active policy; if there is no durable learning, make no change.'
+      periodic_review_context='\n6. Periodic learning review is due. During this turn, inspect recent completed work for durable corrections, missing skill steps, or an uncovered repeated workflow. Apply the smallest justified Nova-owned change under the active policy; if there is no durable learning, make no change.'
     else
       periodic_review_context=
     fi
-    printf '%s%s%s%s%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Nova skill-routing check:\n1. Use .runtime/skill-index.md to identify relevant Nova skills.\n2. Load each relevant SKILL.md completely.\n3. After non-trivial work, actively review corrections, missing steps, and repeated workflows for durable skill learning. Do not stop at classification.\n4. If no skill applies or no durable learning exists, proceed normally. Active skill policy: ' "$active_policy" '.' "$periodic_review_context" '"}}'
+    printf '%s%s%s%s%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Nova skill-routing check:\n1. Use .runtime/skill-index.md to identify relevant Nova skills.\n2. Load each relevant SKILL.md completely.\n3. After non-trivial work, actively review corrections, missing steps, and repeated workflows for durable skill learning. Do not stop at classification.\n4. If no skill applies or no durable learning exists, proceed normally. Active skill policy: ' "$active_policy" '.\n5. After non-trivial work that changes canonical Nova files, create a focused local commit for attributable task changes after verification. Leave unrelated changes untouched; never publish without explicit authorization.' "$periodic_review_context" '"}}'
     ;;
   post-tool-use)
     record_periodic_action
