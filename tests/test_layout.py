@@ -125,6 +125,11 @@ class CanonicalLayoutTest(unittest.TestCase):
         self.assertIn("never delete a skill", agents)
         self.assertIn("after 10 submitted turns or 15 successful tool actions", agents)
         self.assertIn("do not run another model", agents)
+        self.assertIn("local Git commit for the durable Nova-owned changes", agents)
+        self.assertIn("only changes attributable to the current task", agents)
+        self.assertIn("leave pre-existing, unrelated", agents)
+        self.assertIn("otherwise publish without explicit owner authorization", agents)
+        self.assertIn("not to external project repositories", agents)
 
     def test_nova_skills_are_additive_without_owning_external_sources(self) -> None:
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")

@@ -153,6 +153,27 @@ limiting what it can become.
 - Treat `.runtime/` as disposable local state, never as canonical knowledge.
 - Use the `update-nova` skill when bringing Nova changes into a working Nova.
 
+## Local Git history
+
+At the end of a non-trivial task that changes canonical Nova files, create a
+local Git commit for the durable Nova-owned changes produced by that task. This
+keeps memory, knowledge, skills, configuration, and Nova evolution recoverable.
+
+Before committing:
+
+- inspect the status and diff;
+- include only changes attributable to the current task;
+- leave pre-existing, unrelated, temporary, or uncertain changes untouched;
+- run verification proportional to the change;
+- check that credentials, authentication state, private runtime data, and
+  `.runtime/` content are not included;
+- use a concise, human-readable commit message.
+
+If the task's changes cannot be separated safely from existing work, leave
+them uncommitted and explain why. This policy applies to the working Nova
+repository, not to external project repositories. Never push, tag, create a
+release, or otherwise publish without explicit owner authorization.
+
 ## Safety and communication
 
 - Never store or expose secrets, credentials, authentication state, or private

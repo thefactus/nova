@@ -115,6 +115,14 @@ to load the same files without changing how they work outside Nova.
 Nova is active only when a coding agent starts from the Nova root. During normal
 work, the agent can save durable learning to the appropriate readable file.
 
+After a non-trivial task changes canonical Nova files, the agent keeps those
+durable changes recoverable in a focused local Git commit. It commits only work
+it can attribute to the current task, leaves unrelated or uncertain changes
+untouched, and checks for sensitive or runtime data first. Nova never pushes,
+tags, releases, or publishes without the owner's explicit authorization. This
+policy does not change how the agent handles Git in external project
+repositories.
+
 ### Skill learning
 
 Nova creates and improves its canonical skills autonomously when completed work
