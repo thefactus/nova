@@ -11,8 +11,8 @@ Nova adds a small, understandable layer of shared context without replacing
 native behavior, burying coding agents in rules, or requiring a complex setup.
 Each owner can evolve it for their own work.
 
-Current version `0.1.1`. Published releases use a matching `v`-prefixed Git
-tag, such as `v0.1.1`.
+Current version `0.1.2`. Published releases use a matching `v`-prefixed Git
+tag, such as `v0.1.2`.
 
 ## Start using Nova
 
@@ -105,6 +105,8 @@ Nova is made of ordinary files you can inspect, edit, and version with Git.
 - `second_brain/` holds detailed knowledge and project history.
 - `skills/` holds reusable ways of doing recurring work.
 - `learning/` holds staged skill changes when approval is enabled.
+- `.runtime/skill-index.md` is a disposable index that helps agents find the
+  right Nova skill without loading every skill file.
 
 Codex reads `AGENTS.md` directly. Claude Code reaches the same instructions
 through the one-line `CLAUDE.md` bridge. Project-local hooks remind both agents
@@ -119,6 +121,11 @@ Nova creates and improves its canonical skills autonomously when completed work
 reveals a durable, reusable procedure. Changes remain ordinary local files and
 visible Git diffs. Speculative or one-off observations should not change a
 skill, and deletion always requires explicit owner authorization.
+
+At the end of non-trivial work, the agent actively reviews owner corrections,
+missing or outdated skill steps, and repeated workflows that may deserve a new
+skill. The agent should act on justified learning rather than merely classify
+it, while leaving one-off or temporary observations in the current session.
 
 Autonomous skill writes are the default:
 
@@ -147,7 +154,7 @@ canonical skills, never external sources.
 
 ## Current scope
 
-Nova `0.1.1` is tested with Codex and Claude Code on macOS and Linux. It includes
+Nova `0.1.2` is tested with Codex and Claude Code on macOS and Linux. It includes
 shared memory, second-brain knowledge, reusable skills, project-local hooks, and
 autonomous skill learning with optional write approval.
 

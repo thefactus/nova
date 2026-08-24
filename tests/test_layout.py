@@ -108,6 +108,9 @@ class CanonicalLayoutTest(unittest.TestCase):
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
 
         self.assertEqual(config, "skills:\n  write_approval: false\n")
+        self.assertIn("actively review what was learned", agents)
+        self.assertIn("Do not stop at classification", agents)
+        self.assertIn("repeated workflow that has no matching skill", agents)
         self.assertIn("apply justified skill creations", agents)
         self.assertIn("When it is `true`, stage them", agents)
         self.assertIn("never delete a skill", agents)

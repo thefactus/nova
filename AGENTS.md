@@ -11,9 +11,9 @@ Before substantive work:
 1. Read `memories/USER.md` when it exists to learn the owner's durable working
    preferences.
 2. Read `memories/MEMORY.md` when it exists to recover durable context.
-3. Review skill names and descriptions in the frontmatter under `skills/`. If
-   a skill clearly matches the task, read its complete `SKILL.md` and follow it
-   before acting.
+3. Use `.runtime/skill-index.md` to review Nova skill names, descriptions, and
+   canonical paths. If a skill clearly matches the task, read its complete
+   `SKILL.md` and follow it before acting.
 4. Read `config.yaml` before creating or modifying a skill.
 5. Consult `second_brain/` only when the task needs deeper project history,
    decisions, communications, or captured knowledge.
@@ -94,7 +94,14 @@ act.
 
 ## Learning loop
 
-At the end of every non-trivial task, classify what was learned:
+At the end of every non-trivial task, actively review what was learned. Look
+for:
+
+- reusable corrections from the owner;
+- missing, outdated, or incorrect steps in a skill that was used;
+- a repeated workflow that has no matching skill.
+
+Then classify the result:
 
 1. No durable learning.
 2. Update a durable user preference or memory.
@@ -102,9 +109,11 @@ At the end of every non-trivial task, classify what was learned:
 4. Improve a skill that proved incomplete, outdated, or wrong.
 5. Create a skill for a reusable workflow not covered by an existing one.
 
-This classification guides Nova's behavior. It is not a required chat footer.
-Use the smallest appropriate update and do not duplicate the same knowledge
-across memory, notes, and skills.
+Do not stop at classification. When durable learning exists, apply the
+smallest appropriate memory, knowledge, or skill change allowed by the active
+policy. When nothing durable was learned, make no change. This review is not a
+required chat footer, and learning should not be duplicated across memory,
+notes, and skills.
 
 Nova learns autonomously by default. When completed work produces a durable,
 reusable improvement, create or update the relevant canonical skill under
