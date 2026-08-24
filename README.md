@@ -11,8 +11,8 @@ Nova adds a small, understandable layer of shared context without replacing
 native behavior, burying coding agents in rules, or requiring a complex setup.
 Each owner can evolve it for their own work.
 
-Current version `0.1.3`. Published releases use a matching `v`-prefixed Git
-tag, such as `v0.1.3`.
+Current version `0.1.4`. Published releases use a matching `v`-prefixed Git
+tag, such as `v0.1.4`.
 
 ## Start using Nova
 
@@ -175,7 +175,7 @@ canonical skills, never external sources.
 
 ## Current scope
 
-Nova `0.1.3` is tested with Codex and Claude Code on macOS and Linux. It includes
+Nova `0.1.4` is tested with Codex and Claude Code on macOS and Linux. It includes
 shared memory, second-brain knowledge, reusable skills, project-local hooks, and
 autonomous skill learning with optional write approval.
 

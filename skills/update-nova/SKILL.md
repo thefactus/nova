@@ -15,7 +15,11 @@ owner has evolved. Treat an update as a reviewed merge, not a fresh install.
 2. Identify the requested release and obtain its verified release artifact in
    a temporary directory. Do not run the installer over an existing Nova or
    add the public source repository as its remote.
-3. Make the current state recoverable before editing. Prefer an existing clean
+3. After verifying the artifact, read the target release's complete
+   `skills/update-nova/SKILL.md` before applying it. Follow its newer guidance
+   when it is compatible with the owner's request and higher-priority safety
+   instructions.
+4. Make the current state recoverable before editing. Prefer an existing clean
    commit, a local checkpoint commit, or a clearly identified backup.
 
 ## Preserve ownership
@@ -37,10 +41,18 @@ owner has evolved. Treat an update as a reviewed merge, not a fresh install.
 3. Apply the smallest coherent set of changes. Add new distributed files when
    safe, merge locally adapted files, and leave unresolved conflicts visible.
 4. Update `VERSION` only after the corresponding release changes are applied.
-5. Run the checks supplied by the release and inspect the final Git diff. At a
-   minimum, confirm that startup instructions, hooks, and runtime bridges still
-   point to valid local files.
-6. Report the previous and resulting versions, what changed, what remained
+5. Run the release checks in the verified pristine artifact when their
+   dependencies are already available. Do not install missing test or
+   validation dependencies without the owner's authorization. If a dependency
+   is unavailable, run the strongest available direct checks and report exactly
+   what was skipped.
+6. Validate the updated working Nova and inspect the final Git diff. At a
+   minimum, confirm its version, configuration, startup instructions, hooks,
+   runtime bridges, and preserved owner content. A working-tree test may assume
+   a distributed default that the owner intentionally changed. Preserve the
+   owner's setting, verify its behavior directly, and report the mismatch
+   instead of changing owner intent to satisfy the assertion.
+7. Report the previous and resulting versions, what changed, what remained
    local, validation performed, and anything still requiring a decision.
 
 If the target release cannot be verified, the current state is not recoverable,
