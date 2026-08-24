@@ -9,7 +9,7 @@
             "type": "command",
             "command": "sh hooks/nova_context.sh session-start",
             "timeout": 5,
-            "additionalContextLimit": 500,
+            "additionalContextLimit": 800,
             "statusMessage": "Loading Nova context"
           }
         ]

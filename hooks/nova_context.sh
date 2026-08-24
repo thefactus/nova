@@ -6,6 +6,10 @@ learning_lock_directory=$learning_state_directory/lock
 turn_count_path=$learning_state_directory/turn-count
 action_count_path=$learning_state_directory/action-count
 review_due_path=$learning_state_directory/review-due
+update_state_directory=.runtime/update-check
+update_checked_at_path=$update_state_directory/checked-at
+update_latest_version_path=$update_state_directory/latest-version
+nova_release_api_url=${NOVA_RELEASE_API_URL:-https://api.github.com/repos/thefactus/nova/releases/latest}
 
 build_skill_index() {
   mkdir -p .runtime || return 0
@@ -101,6 +105,146 @@ skill_write_policy() {
   else
     printf '%s' 'skills.write_approval=false; apply justified Nova skill updates and creations autonomously'
   fi
+}
+
+update_config_value() {
+  requested_key=$1
+
+  [ -f config.yaml ] || return 0
+
+  awk -v requested_key="$requested_key" '
+    /^[[:space:]]*updates:[[:space:]]*($|#)/ {
+      in_updates = 1
+      next
+    }
+    in_updates && /^[^[:space:]#]/ {
+      in_updates = 0
+    }
+    in_updates {
+      pattern = "^[[:space:]]{2}" requested_key ":[[:space:]]*"
+      if ($0 ~ pattern) {
+        value = $0
+        sub(pattern, "", value)
+        sub(/[[:space:]#].*$/, "", value)
+        print value
+        exit
+      }
+    }
+  ' config.yaml
+}
+
+load_update_config() {
+  update_check_on_startup=true
+  update_check_interval_hours=24
+
+  configured_check=$(update_config_value check_on_startup)
+  normalized_check=$(printf '%s' "$configured_check" | tr '[:upper:]' '[:lower:]')
+
+  case "$normalized_check" in
+    '') ;;
+    true|yes|on) update_check_on_startup=true ;;
+    false|no|off) update_check_on_startup=false ;;
+    *) update_check_on_startup=false ;;
+  esac
+
+  configured_interval=$(update_config_value check_interval_hours)
+  case "$configured_interval" in
+    '') ;;
+    *[!0-9]*|0) ;;
+    *) update_check_interval_hours=$configured_interval ;;
+  esac
+}
+
+valid_semver() {
+  printf '%s\n' "$1" | awk '
+    BEGIN { valid = 0 }
+    /^[0-9]+\.[0-9]+\.[0-9]+$/ { valid = 1 }
+    END { exit valid ? 0 : 1 }
+  '
+}
+
+newer_semver() {
+  candidate_version=$1
+  current_version=$2
+
+  awk -v candidate="$candidate_version" -v current="$current_version" 'BEGIN {
+    split(candidate, candidate_parts, ".")
+    split(current, current_parts, ".")
+    for (part_index = 1; part_index <= 3; part_index += 1) {
+      if ((candidate_parts[part_index] + 0) > (current_parts[part_index] + 0)) exit 0
+      if ((candidate_parts[part_index] + 0) < (current_parts[part_index] + 0)) exit 1
+    }
+    exit 1
+  }'
+}
+
+fetch_latest_release_version() {
+  command -v curl >/dev/null 2>&1 || return 1
+
+  release_response=$(
+    curl -fsSL --connect-timeout 1 --max-time 2 "$nova_release_api_url" 2>/dev/null
+  ) || return 1
+
+  latest_release_version=$(
+    printf '%s\n' "$release_response" | sed -n \
+      's/.*"tag_name":[[:space:]]*"v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' |
+      sed -n '1p'
+  )
+
+  valid_semver "$latest_release_version" || return 1
+  printf '%s' "$latest_release_version"
+}
+
+refresh_update_cache_when_due() {
+  current_timestamp=$(date +%s 2>/dev/null) || return 1
+  cache_is_fresh=false
+  checked_at=
+
+  if [ -f "$update_checked_at_path" ]; then
+    IFS= read -r checked_at < "$update_checked_at_path"
+  fi
+
+  case "$checked_at" in
+    ''|*[!0-9]*) ;;
+    *)
+      cache_age=$((current_timestamp - checked_at))
+      cache_interval=$((update_check_interval_hours * 3600))
+      if [ "$cache_age" -ge 0 ] && [ "$cache_age" -lt "$cache_interval" ]; then
+        cache_is_fresh=true
+      fi
+      ;;
+  esac
+
+  [ "$cache_is_fresh" = false ] || return 0
+  mkdir -p "$update_state_directory" || return 1
+
+  temporary_checked_at=$update_checked_at_path.$$.tmp
+  printf '%s\n' "$current_timestamp" > "$temporary_checked_at" || return 1
+  mv "$temporary_checked_at" "$update_checked_at_path" || return 1
+
+  if fetched_version=$(fetch_latest_release_version); then
+    temporary_latest_version=$update_latest_version_path.$$.tmp
+    printf '%s\n' "$fetched_version" > "$temporary_latest_version" || return 1
+    mv "$temporary_latest_version" "$update_latest_version_path" || return 1
+  else
+    rm -f "$update_latest_version_path"
+  fi
+}
+
+check_for_nova_update() {
+  installed_update_version=
+  available_update_version=
+  load_update_config
+  [ "$update_check_on_startup" = true ] || return 1
+  [ -f VERSION ] || return 1
+
+  IFS= read -r installed_update_version < VERSION
+  valid_semver "$installed_update_version" || return 1
+  refresh_update_cache_when_due || return 1
+  [ -f "$update_latest_version_path" ] || return 1
+  IFS= read -r available_update_version < "$update_latest_version_path"
+  valid_semver "$available_update_version" || return 1
+  newer_semver "$available_update_version" "$installed_update_version"
 }
 
 periodic_review_value() {
@@ -289,7 +433,12 @@ mark_periodic_review_when_due() {
 case "${1:-}" in
   session-start)
     build_skill_index
-    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Nova operating check:\n- Read memories/USER.md and memories/MEMORY.md before substantive work.\n- Use .runtime/skill-index.md to find applicable Nova skills, then load only their canonical SKILL.md files.\n- Nova skills are additive; global, project, plugin, and built-in skills may remain available.\n- Read config.yaml before creating or modifying skills.\n- Use second_brain/ only when deeper project history or decisions are needed.\n- Keep durable knowledge in canonical Nova files."}}'
+    if check_for_nova_update; then
+      update_context='\n\nNova update available: '"$installed_update_version"' -> '"$available_update_version"'.\nTell the owner once in your first response that their current Nova is '"$installed_update_version"', version '"$available_update_version"' is available, and they can ask you to update it. Do not update automatically.'
+    else
+      update_context=
+    fi
+    printf '%s%s%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Nova operating check:\n- Read memories/USER.md and memories/MEMORY.md before substantive work.\n- Use .runtime/skill-index.md to find applicable Nova skills, then load only their canonical SKILL.md files.\n- Nova skills are additive; global, project, plugin, and built-in skills may remain available.\n- Read config.yaml before creating or modifying skills.\n- Use second_brain/ only when deeper project history or decisions are needed.\n- Keep durable knowledge in canonical Nova files.' "$update_context" '"}}'
     ;;
   prompt-submit)
     record_periodic_turn

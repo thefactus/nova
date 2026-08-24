@@ -16,6 +16,13 @@ Nova may use a relevant external skill, but its autonomous learning loop must
 not modify or delete that source. External skill learning belongs with its
 owner rather than in Nova's canonical library.
 
+## Startup release check
+
+When startup update checks are enabled, Nova sends a public unauthenticated
+request to GitHub's Nova release endpoint at the configured interval. It does
+not send memory, project context, prompts, tool output, or other Nova content.
+Disable the check with `updates.check_on_startup: false` in `config.yaml`.
+
 ## Report a vulnerability
 
 Do not open a public issue with vulnerability details. Use GitHub's private

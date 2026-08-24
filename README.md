@@ -11,8 +11,8 @@ Nova adds a small, understandable layer of shared context without replacing
 native behavior, burying coding agents in rules, or requiring a complex setup.
 Each owner can evolve it for their own work.
 
-Current version `0.1.4`. Published releases use a matching `v`-prefixed Git
-tag, such as `v0.1.4`.
+Current version `0.1.5`. Published releases use a matching `v`-prefixed Git
+tag, such as `v0.1.5`.
 
 ## Start using Nova
 
@@ -35,7 +35,10 @@ curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh
 The destination must not already exist. Nova creates its parent directories
 when needed.
 
-Your Nova stays local and is not connected to GitHub.
+Your Nova content stays local and is not linked to the public GitHub repository.
+By default, startup makes a cached request to Nova's public GitHub release
+endpoint to check for a newer version. It sends no Nova content and can be
+disabled in `config.yaml`.
 
 ## Use Nova
 
@@ -100,13 +103,15 @@ as its remote. That repository distributes Nova itself, not your personal data.
 Nova is made of ordinary files you can inspect, edit, and version with Git.
 
 - `AGENTS.md` tells each supported coding agent how to use Nova.
-- `config.yaml` controls whether skill changes are autonomous or reviewed.
+- `config.yaml` controls skill review, periodic learning, and update notices.
 - `memories/` helps agents remember your preferences and important context.
 - `second_brain/` holds detailed knowledge and project history.
 - `skills/` holds reusable ways of doing recurring work.
 - `learning/` holds staged skill changes when approval is enabled.
 - `.runtime/skill-index.md` is a disposable index that helps agents find the
   right Nova skill without loading every skill file.
+- `.runtime/update-check/` stores the disposable timestamp and public version
+  from the most recent release check.
 
 Codex reads `AGENTS.md` directly. Claude Code reaches the same instructions
 through the one-line `CLAUDE.md` bridge. Project-local hooks remind both agents
@@ -145,6 +150,9 @@ learning:
     enabled: true
     turn_interval: 10
     action_interval: 15
+updates:
+  check_on_startup: true
+  check_interval_hours: 24
 ```
 
 Set `skills.write_approval` to `true` in `config.yaml` to stage every skill
@@ -173,9 +181,23 @@ itself. Compatible skills may be combined; materially conflicting skills should
 not be blended silently. Nova's autonomous learning changes only its own
 canonical skills, never external sources.
 
+### Update notices
+
+At startup, Nova checks its public GitHub release endpoint at most once per
+configured interval. If a newer semantic version exists, the agent mentions the
+installed and available versions once in its first response. The check has a
+short timeout, fails silently when offline, and never updates Nova automatically.
+
+To silence update notices and disable the network check:
+
+```yaml
+updates:
+  check_on_startup: false
+```
+
 ## Current scope
 
-Nova `0.1.4` is tested with Codex and Claude Code on macOS and Linux. It includes
+Nova `0.1.5` is tested with Codex and Claude Code on macOS and Linux. It includes
 shared memory, second-brain knowledge, reusable skills, project-local hooks, and
 autonomous skill learning with optional write approval.
 

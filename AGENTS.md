@@ -152,6 +152,9 @@ limiting what it can become.
   configuration as part of an update.
 - Treat `.runtime/` as disposable local state, never as canonical knowledge.
 - Use the `update-nova` skill when bringing Nova changes into a working Nova.
+- The startup hook may perform a cached public release check when enabled in
+  `config.yaml`. It may notify the owner about a newer version, but must never
+  update Nova automatically.
 
 ## Local Git history
 

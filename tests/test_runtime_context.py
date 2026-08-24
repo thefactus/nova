@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -10,18 +11,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / "hooks" / "nova_context.sh"
 LEARNING_STATE = ROOT / ".runtime" / "learning"
+UPDATE_STATE = ROOT / ".runtime" / "update-check"
 
 
 class RuntimeContextTest(unittest.TestCase):
     def setUp(self) -> None:
         shutil.rmtree(LEARNING_STATE, ignore_errors=True)
+        shutil.rmtree(UPDATE_STATE, ignore_errors=True)
 
     def tearDown(self) -> None:
         shutil.rmtree(LEARNING_STATE, ignore_errors=True)
+        shutil.rmtree(UPDATE_STATE, ignore_errors=True)
 
     def run_hook(
-        self, mode: str, cwd: Path = ROOT
+        self, mode: str, cwd: Path = ROOT, env: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        environment["NOVA_RELEASE_API_URL"] = (cwd / "missing-release.json").as_uri()
+        if env:
+            environment.update(env)
+
         return subprocess.run(
             ["/bin/sh", str(HOOK), mode],
             cwd=cwd,
@@ -29,6 +38,7 @@ class RuntimeContextTest(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
+            env=environment,
         )
 
     def test_session_start_builds_and_returns_the_skill_index(self) -> None:
@@ -47,6 +57,7 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertIn(".runtime/skill-index.md", output["additionalContext"])
         self.assertIn("Nova skills are additive", output["additionalContext"])
         self.assertIn("config.yaml", output["additionalContext"])
+        self.assertNotIn("Nova update available", output["additionalContext"])
         self.assertLessEqual(len(output["additionalContext"]), 500)
         self.assertFalse(index_path.exists())
         self.assertTrue(markdown_index_path.is_file())
@@ -164,8 +175,17 @@ class RuntimeContextTest(unittest.TestCase):
         return hook_path
 
     def run_fixture_hook(
-        self, root: Path, hook_path: Path, mode: str
+        self,
+        root: Path,
+        hook_path: Path,
+        mode: str,
+        env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        environment["NOVA_RELEASE_API_URL"] = (root / "missing-release.json").as_uri()
+        if env:
+            environment.update(env)
+
         return subprocess.run(
             ["/bin/sh", str(hook_path), mode],
             cwd=root,
@@ -173,7 +193,154 @@ class RuntimeContextTest(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
+            env=environment,
         )
+
+    def write_release_response(self, root: Path, version: str) -> Path:
+        response_path = root / "release.json"
+        response_path.write_text(
+            json.dumps({"tag_name": f"v{version}"}),
+            encoding="utf-8",
+        )
+        return response_path
+
+    def test_session_start_reports_a_newer_nova_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "updates:\n"
+                "  check_on_startup: true\n"
+                "  check_interval_hours: 24\n",
+            )
+            (root / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+            response_path = self.write_release_response(root, "1.3.0")
+
+            result = self.run_fixture_hook(
+                root,
+                hook_path,
+                "session-start",
+                env={"NOVA_RELEASE_API_URL": response_path.as_uri()},
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Nova update available: 1.2.3 -> 1.3.0", context)
+        self.assertIn("Tell the owner once", context)
+        self.assertIn("Do not update automatically", context)
+        self.assertLessEqual(len(context), 800)
+
+    def test_session_start_is_unchanged_when_nova_is_current(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            (root / "VERSION").write_text("1.3.0\n", encoding="utf-8")
+            response_path = self.write_release_response(root, "1.3.0")
+
+            result = self.run_fixture_hook(
+                root,
+                hook_path,
+                "session-start",
+                env={"NOVA_RELEASE_API_URL": response_path.as_uri()},
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Nova update available", context)
+
+    def test_session_start_does_not_report_an_older_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            (root / "VERSION").write_text("2.0.0\n", encoding="utf-8")
+            response_path = self.write_release_response(root, "1.9.9")
+
+            result = self.run_fixture_hook(
+                root,
+                hook_path,
+                "session-start",
+                env={"NOVA_RELEASE_API_URL": response_path.as_uri()},
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Nova update available", context)
+
+    def test_startup_update_check_can_be_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "updates:\n  check_on_startup: false\n",
+            )
+            (root / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+            response_path = self.write_release_response(root, "2.0.0")
+
+            result = self.run_fixture_hook(
+                root,
+                hook_path,
+                "session-start",
+                env={"NOVA_RELEASE_API_URL": response_path.as_uri()},
+            )
+            update_state_exists = (root / ".runtime" / "update-check").exists()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Nova update available", context)
+        self.assertFalse(update_state_exists)
+
+    def test_startup_update_check_uses_its_cached_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "updates:\n"
+                "  check_on_startup: true\n"
+                "  check_interval_hours: 24\n",
+            )
+            (root / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+            response_path = self.write_release_response(root, "1.1.0")
+            environment = {"NOVA_RELEASE_API_URL": response_path.as_uri()}
+
+            first = self.run_fixture_hook(
+                root, hook_path, "session-start", env=environment
+            )
+            self.write_release_response(root, "1.2.0")
+            second = self.run_fixture_hook(
+                root, hook_path, "session-start", env=environment
+            )
+            cached_version = (
+                root / ".runtime" / "update-check" / "latest-version"
+            ).read_text(encoding="utf-8")
+
+        for result in (first, second):
+            self.assertEqual(result.returncode, 0, result.stderr)
+            context = json.loads(result.stdout)["hookSpecificOutput"][
+                "additionalContext"
+            ]
+            self.assertIn("Nova update available: 1.0.0 -> 1.1.0", context)
+            self.assertNotIn("1.2.0", context)
+        self.assertEqual(cached_version, "1.1.0\n")
+
+    def test_startup_update_check_fails_silently_and_caches_the_attempt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            (root / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+
+            result = self.run_fixture_hook(root, hook_path, "session-start")
+            checked_at_exists = (
+                root / ".runtime" / "update-check" / "checked-at"
+            ).is_file()
+            latest_version_exists = (
+                root / ".runtime" / "update-check" / "latest-version"
+            ).exists()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Nova update available", context)
+        self.assertTrue(checked_at_exists)
+        self.assertFalse(latest_version_exists)
 
     def test_periodic_review_is_injected_after_turn_interval(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

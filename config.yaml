@@ -5,3 +5,6 @@ learning:
     enabled: true
     turn_interval: 10
     action_interval: 15
+updates:
+  check_on_startup: true
+  check_interval_hours: 24

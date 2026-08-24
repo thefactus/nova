@@ -70,6 +70,20 @@ class CanonicalLayoutTest(unittest.TestCase):
         )
         self.assertIn("Rotate or revoke it first.", security)
 
+    def test_startup_release_check_is_disclosed_and_optional(self) -> None:
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        config = (ROOT / "config.yaml").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        compact_security = " ".join(security.split())
+
+        self.assertIn("check_on_startup: true", config)
+        self.assertIn("check_interval_hours: 24", config)
+        self.assertIn("fails silently when offline", readme)
+        self.assertIn("check_on_startup: false", readme)
+        self.assertIn("does not send memory", compact_security)
+        self.assertIn("must never\n  update Nova automatically", agents)
+
     def test_nova_is_presented_as_an_ai_assistant(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
@@ -115,7 +129,10 @@ class CanonicalLayoutTest(unittest.TestCase):
             "  periodic_review:\n"
             "    enabled: true\n"
             "    turn_interval: 10\n"
-            "    action_interval: 15\n",
+            "    action_interval: 15\n"
+            "updates:\n"
+            "  check_on_startup: true\n"
+            "  check_interval_hours: 24\n",
         )
         self.assertIn("actively review what was learned", agents)
         self.assertIn("Do not stop at classification", agents)
