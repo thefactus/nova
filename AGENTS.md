@@ -133,6 +133,14 @@ Only Nova-owned skills belong in this learning loop. Route learning owned by a
 repository, company, external package, managed runtime, or unknown owner to
 `learning/feedback/` instead of modifying its source.
 
+Project-local hooks keep a lightweight periodic fallback for this review. By
+default, after 10 submitted turns or 15 successful tool actions, the next user
+prompt reminds the active agent to inspect recent completed work for durable
+learning. The hooks store only disposable counters and a due marker under
+`.runtime/`; they do not run another model or retain prompts, tool results, or
+transcripts. `config.yaml` can disable this reminder or change its intervals.
+The end-of-task review remains primary and should not wait for the counter.
+
 ## Evolution
 
 Nova evolves with its owner. Help it stay understandable as it grows, without

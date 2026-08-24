@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -8,9 +9,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / "hooks" / "nova_context.sh"
+LEARNING_STATE = ROOT / ".runtime" / "learning"
 
 
 class RuntimeContextTest(unittest.TestCase):
+    def setUp(self) -> None:
+        shutil.rmtree(LEARNING_STATE, ignore_errors=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(LEARNING_STATE, ignore_errors=True)
+
     def run_hook(
         self, mode: str, cwd: Path = ROOT
     ) -> subprocess.CompletedProcess[str]:
@@ -144,8 +152,164 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertIn("updates and creations", context)
         self.assertIn("autonomously", context)
 
+    def prepare_fixture(self, root: Path, config: str) -> Path:
+        hook_path = root / "hooks" / "nova_context.sh"
+        hook_path.parent.mkdir(parents=True)
+        hook_path.write_text(HOOK.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "config.yaml").write_text(config, encoding="utf-8")
+        return hook_path
+
+    def run_fixture_hook(
+        self, root: Path, hook_path: Path, mode: str
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["/bin/sh", str(hook_path), mode],
+            cwd=root,
+            input="{}",
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_periodic_review_is_injected_after_turn_interval(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "learning:\n"
+                "  periodic_review:\n"
+                "    enabled: true\n"
+                "    turn_interval: 2\n"
+                "    action_interval: 100\n",
+            )
+
+            first_prompt = self.run_fixture_hook(root, hook_path, "prompt-submit")
+            first_stop = self.run_fixture_hook(root, hook_path, "stop")
+            second_prompt = self.run_fixture_hook(root, hook_path, "prompt-submit")
+            second_stop = self.run_fixture_hook(root, hook_path, "stop")
+            due_path = root / ".runtime" / "learning" / "review-due"
+            due_before_next_prompt = due_path.exists()
+            review_prompt = self.run_fixture_hook(root, hook_path, "prompt-submit")
+            due_after_next_prompt = due_path.exists()
+
+            turn_count = (
+                root / ".runtime" / "learning" / "turn-count"
+            ).read_text(encoding="utf-8")
+
+        for result in (first_prompt, first_stop, second_prompt, second_stop):
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(due_before_next_prompt)
+        context = json.loads(review_prompt.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Periodic learning review is due", context)
+        self.assertFalse(due_after_next_prompt)
+        self.assertEqual(turn_count, "1\n")
+
+    def test_periodic_review_is_injected_after_action_interval(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "learning:\n"
+                "  periodic_review:\n"
+                "    enabled: true\n"
+                "    turn_interval: 100\n"
+                "    action_interval: 2\n",
+            )
+
+            first_action = self.run_fixture_hook(root, hook_path, "post-tool-use")
+            second_action = self.run_fixture_hook(root, hook_path, "post-tool-use")
+            stop = self.run_fixture_hook(root, hook_path, "stop")
+            review_prompt = self.run_fixture_hook(root, hook_path, "prompt-submit")
+
+        for result in (first_action, second_action, stop, review_prompt):
+            self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(review_prompt.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Periodic learning review is due", context)
+
+    def test_periodic_review_can_be_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "learning:\n"
+                "  periodic_review:\n"
+                "    enabled: false\n"
+                "    turn_interval: 1\n"
+                "    action_interval: 1\n",
+            )
+
+            prompt = self.run_fixture_hook(root, hook_path, "prompt-submit")
+            action = self.run_fixture_hook(root, hook_path, "post-tool-use")
+            stop = self.run_fixture_hook(root, hook_path, "stop")
+
+            state_exists = (root / ".runtime" / "learning").exists()
+
+        for result in (prompt, action, stop):
+            self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(prompt.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Periodic learning review is due", context)
+        self.assertFalse(state_exists)
+
+    def test_parallel_actions_are_counted_without_lost_updates(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(
+                root,
+                "learning:\n"
+                "  periodic_review:\n"
+                "    enabled: true\n"
+                "    turn_interval: 100\n"
+                "    action_interval: 20\n",
+            )
+
+            processes = [
+                subprocess.Popen(
+                    ["/bin/sh", str(hook_path), "post-tool-use"],
+                    cwd=root,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                for _ in range(20)
+            ]
+            results = [process.communicate(timeout=10) for process in processes]
+            return_codes = [process.returncode for process in processes]
+            action_count = (
+                root / ".runtime" / "learning" / "action-count"
+            ).read_text(encoding="utf-8")
+            stop = self.run_fixture_hook(root, hook_path, "stop")
+            review_due = (root / ".runtime" / "learning" / "review-due").exists()
+
+        self.assertEqual(return_codes, [0] * 20, results)
+        self.assertEqual(action_count, "20\n")
+        self.assertEqual(stop.returncode, 0, stop.stderr)
+        self.assertTrue(review_due)
+
+    def test_stale_learning_lock_is_recovered(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            lock_path = root / ".runtime" / "learning" / "lock"
+            lock_path.mkdir(parents=True)
+            (lock_path / "owner").write_text("999999999\n", encoding="utf-8")
+
+            result = self.run_fixture_hook(root, hook_path, "prompt-submit")
+            turn_count = (
+                root / ".runtime" / "learning" / "turn-count"
+            ).read_text(encoding="utf-8")
+            lock_exists = lock_path.exists()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(turn_count, "1\n")
+        self.assertFalse(lock_exists)
+
     def test_unrelated_event_is_ignored(self) -> None:
-        result = self.run_hook("post-tool-use")
+        result = self.run_hook("unrelated-event")
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
@@ -159,6 +323,8 @@ class RuntimeContextTest(unittest.TestCase):
         expected = {
             "SessionStart": "sh hooks/nova_context.sh session-start",
             "UserPromptSubmit": "sh hooks/nova_context.sh prompt-submit",
+            "PostToolUse": "sh hooks/nova_context.sh post-tool-use",
+            "Stop": "sh hooks/nova_context.sh stop",
         }
         for config in (codex, claude):
             with self.subTest(config=config):

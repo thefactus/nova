@@ -11,8 +11,8 @@ Nova adds a small, understandable layer of shared context without replacing
 native behavior, burying coding agents in rules, or requiring a complex setup.
 Each owner can evolve it for their own work.
 
-Current version `0.1.2`. Published releases use a matching `v`-prefixed Git
-tag, such as `v0.1.2`.
+Current version `0.1.3`. Published releases use a matching `v`-prefixed Git
+tag, such as `v0.1.3`.
 
 ## Start using Nova
 
@@ -127,17 +127,30 @@ missing or outdated skill steps, and repeated workflows that may deserve a new
 skill. The agent should act on justified learning rather than merely classify
 it, while leaving one-off or temporary observations in the current session.
 
-Autonomous skill writes are the default:
+Autonomous skill writes and periodic learning review are the defaults:
 
 ```yaml
 skills:
   write_approval: false
+learning:
+  periodic_review:
+    enabled: true
+    turn_interval: 10
+    action_interval: 15
 ```
 
 Set `skills.write_approval` to `true` in `config.yaml` to stage every skill
 creation or update under `learning/proposals/pending/`. Review staged changes
 through the bundled `curate-skill-learning` skill. Switching the setting does
 not apply proposals that were already pending.
+
+The periodic review is a lightweight fallback for the end-of-task learning
+loop. After either configured interval is reached, the next user prompt asks
+the active agent to inspect recent completed work and apply only justified
+durable learning. Nova stores only disposable counters and a due marker under
+`.runtime/`. It does not start a background reviewer or retain prompts, tool
+results, or transcripts. Set `learning.periodic_review.enabled` to `false` to
+turn the fallback off.
 
 ### Other installed skills
 
@@ -154,7 +167,7 @@ canonical skills, never external sources.
 
 ## Current scope
 
-Nova `0.1.2` is tested with Codex and Claude Code on macOS and Linux. It includes
+Nova `0.1.3` is tested with Codex and Claude Code on macOS and Linux. It includes
 shared memory, second-brain knowledge, reusable skills, project-local hooks, and
 autonomous skill learning with optional write approval.
 

@@ -107,13 +107,24 @@ class CanonicalLayoutTest(unittest.TestCase):
         config = (ROOT / "config.yaml").read_text(encoding="utf-8")
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
 
-        self.assertEqual(config, "skills:\n  write_approval: false\n")
+        self.assertEqual(
+            config,
+            "skills:\n"
+            "  write_approval: false\n"
+            "learning:\n"
+            "  periodic_review:\n"
+            "    enabled: true\n"
+            "    turn_interval: 10\n"
+            "    action_interval: 15\n",
+        )
         self.assertIn("actively review what was learned", agents)
         self.assertIn("Do not stop at classification", agents)
         self.assertIn("repeated workflow that has no matching skill", agents)
         self.assertIn("apply justified skill creations", agents)
         self.assertIn("When it is `true`, stage them", agents)
         self.assertIn("never delete a skill", agents)
+        self.assertIn("after 10 submitted turns or 15 successful tool actions", agents)
+        self.assertIn("do not run another model", agents)
 
     def test_nova_skills_are_additive_without_owning_external_sources(self) -> None:
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")

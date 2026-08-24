@@ -22,6 +22,28 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh hooks/nova_context.sh post-tool-use",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh hooks/nova_context.sh stop",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

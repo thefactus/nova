@@ -1,2 +1,7 @@
 skills:
   write_approval: false
+learning:
+  periodic_review:
+    enabled: true
+    turn_interval: 10
+    action_interval: 15

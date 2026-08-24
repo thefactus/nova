@@ -22,8 +22,30 @@
             "type": "command",
             "command": "sh hooks/nova_context.sh prompt-submit",
             "timeout": 5,
-            "additionalContextLimit": 500,
+            "additionalContextLimit": 900,
             "statusMessage": "Routing through Nova skills"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh hooks/nova_context.sh post-tool-use",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh hooks/nova_context.sh stop",
+            "timeout": 5
           }
         ]
       }
