@@ -104,9 +104,14 @@ as its remote. That repository distributes Nova itself, not your personal data.
 
 ## Skills
 
-Bundled Nova skills are readable, reusable workflows in `skills/`. When a task
-matches, your agent can load the relevant `SKILL.md` and follow it. You can
-inspect, adapt, or add skills as your Nova grows.
+Bundled Nova skills are readable, reusable workflows in `skills/`. They live
+inside Nova, rather than in Codex or Claude Code's own folders, so every
+supported agent can use the same library. They are available only to sessions
+started from Nova, while each agent's own skills continue to work alongside
+them.
+
+When a task matches, your agent can load the relevant `SKILL.md` and follow it.
+You can inspect, adapt, or add skills as your Nova grows.
 
 - [`capture`](skills/capture/SKILL.md) saves links, documents, media, and ideas
   as durable, searchable notes in your second brain.
