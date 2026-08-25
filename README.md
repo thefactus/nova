@@ -102,6 +102,26 @@ Your Nova will grow to contain personal memory and context. Keep it local or
 back it up in a private Git repository. Do not use the public Nova repository
 as its remote. That repository distributes Nova itself, not your personal data.
 
+## Skills
+
+Bundled Nova skills are readable, reusable workflows in `skills/`. When a task
+matches, your agent can load the relevant `SKILL.md` and follow it. You can
+inspect, adapt, or add skills as your Nova grows.
+
+- [`capture`](skills/capture/SKILL.md) saves links, documents, media, and ideas
+  as durable, searchable notes in your second brain.
+- [`curate-skill-learning`](skills/curate-skill-learning/SKILL.md) reviews and
+  applies staged skill changes when write approval is enabled.
+- [`herdr`](skills/herdr/SKILL.md) operates Herdr and coordinates coding agents
+  when you explicitly ask to use it.
+- [`organize-project-knowledge`](skills/organize-project-knowledge/SKILL.md)
+  keeps project context current, organized, and easy to recover.
+- [`skill-library-audit`](skills/skill-library-audit/SKILL.md) checks a skill
+  library for structural problems, unclear triggers, overlap, and stale
+  assumptions.
+- [`update-nova`](skills/update-nova/SKILL.md) guides Nova updates while
+  preserving your memory, knowledge, skills, configuration, and local choices.
+
 ## How Nova works
 
 Nova is made of ordinary files you can inspect, edit, and version with Git.
