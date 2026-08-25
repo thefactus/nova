@@ -3,7 +3,7 @@
 set -eu
 umask 077
 
-NOVA_INSTALL_VERSION=0.1.5
+NOVA_INSTALL_VERSION=0.1.6
 NOVA_RELEASE_BASE_URL=${NOVA_RELEASE_BASE_URL:-https://github.com/thefactus/nova/releases/download}
 
 fail() {
