@@ -13,6 +13,7 @@ class CanonicalLayoutTest(unittest.TestCase):
         expected = [
             ".claude/settings.json",
             ".codex/hooks.json",
+            ".gitattributes",
             ".github/workflows/verify.yml",
             "AGENTS.md",
             "CLAUDE.md",
@@ -50,6 +51,17 @@ class CanonicalLayoutTest(unittest.TestCase):
         for relative_path in expected:
             with self.subTest(path=relative_path):
                 self.assertTrue((ROOT / relative_path).is_file())
+
+    def test_release_excludes_development_files(self) -> None:
+        attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            attributes,
+            ".github export-ignore\n"
+            ".gitattributes export-ignore\n"
+            "scripts export-ignore\n"
+            "tests export-ignore\n",
+        )
 
     def test_version_is_semantic_and_visible(self) -> None:
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()

@@ -207,7 +207,8 @@ autonomous skill learning with optional write approval.
 
 Other operating systems and coding agents have not been tested yet. A web
 interface, automatic upgrades, and built-in secret scanning are not part of
-this release.
+this release. Python is used only for development tests in the source
+repository; it is not required by or included with an installed Nova.
 
 ## Updating Nova
 

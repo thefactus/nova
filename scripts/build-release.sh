@@ -36,6 +36,33 @@ git -C "$repository_root" archive \
   --output="$archive_path" \
   HEAD
 
+archive_listing=$output_directory/.archive-listing.$$
+cleanup() {
+  rm -f "$archive_listing"
+}
+trap cleanup EXIT HUP INT TERM
+
+tar -tzf "$archive_path" > "$archive_listing"
+
+for required_path in \
+  "nova-v$version/AGENTS.md" \
+  "nova-v$version/config.yaml" \
+  "nova-v$version/hooks/nova_context.sh" \
+  "nova-v$version/skills/update-nova/SKILL.md"
+do
+  grep -Fx "$required_path" "$archive_listing" >/dev/null || {
+    printf 'release archive is missing %s\n' "$required_path" >&2
+    exit 1
+  }
+done
+
+for excluded_path in .github scripts tests; do
+  if grep -F "nova-v$version/$excluded_path/" "$archive_listing" >/dev/null; then
+    printf 'release archive contains development path: %s\n' "$excluded_path" >&2
+    exit 1
+  fi
+done
+
 if command -v sha256sum >/dev/null 2>&1; then
   checksum=$(sha256sum "$archive_path" | awk '{print $1}')
 elif command -v shasum >/dev/null 2>&1; then
