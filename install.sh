@@ -1,6 +1,7 @@
 #!/bin/sh
 
 set -eu
+umask 077
 
 NOVA_INSTALL_VERSION=0.1.5
 NOVA_RELEASE_BASE_URL=${NOVA_RELEASE_BASE_URL:-https://github.com/thefactus/nova/releases/download}
@@ -28,7 +29,7 @@ calculate_sha256() {
   fail "required command not found: sha256sum or shasum"
 }
 
-for command_name in curl git tar awk mktemp sed; do
+for command_name in curl git tar awk mktemp sed chmod; do
   require_command "$command_name"
 done
 
@@ -99,6 +100,7 @@ extracted_directory=$temporary_directory/$archive_root
 [ -d "$extracted_directory" ] || fail "release root is missing"
 [ "$(sed -n '1p' "$extracted_directory/VERSION")" = "$version" ] || \
   fail "release version does not match the installer"
+chmod 700 "$extracted_directory"
 
 destination_parent=$(dirname "$destination")
 mkdir -p "$destination_parent"

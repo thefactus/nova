@@ -4,6 +4,60 @@
 
 Security fixes are provided for the latest published Nova release.
 
+## Security model
+
+Nova is a set of local files, project-local hooks, and instructions used by a
+native coding agent. It is not a sandbox or a separate security boundary.
+
+- Nova inherits the filesystem, network, tool, and command permissions granted
+  to Codex, Claude Code, or another coding agent.
+- Nova's hooks execute local shell code when the supported agent invokes them.
+  Review the folder and its hooks before granting trust.
+- Skills are instructions that may cause an agent to use tools or modify files.
+  Review skills according to the sensitivity of the work and the permissions
+  available to the agent.
+- Imported documents, webpages, repository content, and tool output may contain
+  untrusted instructions. Nova tells agents to treat that content as evidence,
+  but this is guidance rather than technical isolation.
+
+The coding agent and any tools, plugins, or model providers it uses have their
+own data handling and network behavior. Review those products separately under
+your organization's policies.
+
+## Local data and Git history
+
+Memory, second-brain knowledge, skills, and configuration are ordinary local
+files. Nova does not encrypt them or enforce a retention period. Protect the
+device and any backups according to the sensitivity of that content.
+
+The installer creates a local Git repository with no remote and restricts the
+Nova root directory to its owner. Local commits make changes recoverable, but
+they can also retain content after it is removed from the current file. Before
+adding a remote, sharing a working Nova, or copying its Git history, review the
+entire repository for private data and credentials.
+
+The public Nova repository distributes empty starter memory and knowledge
+files. A person's working Nova is a separate repository and must not be pushed
+to the public Nova repository.
+
+## Autonomous learning and review
+
+Nova learns autonomously by default. When completed work produces a justified,
+reusable improvement, the active coding agent may update a Nova-owned skill and
+record the change in local Git. This is model-directed behavior, not a security
+enforcement mechanism.
+
+Organizations or owners that require human review before skill changes can set:
+
+```yaml
+skills:
+  write_approval: true
+```
+
+Nova will then stage proposed skill changes for review instead of applying them
+directly. This setting does not review external skills or restrict the native
+agent's other file and tool permissions.
+
 ## Skills outside Nova
 
 Native coding agents may expose user-level, global, project, plugin, managed,
@@ -22,6 +76,20 @@ When startup update checks are enabled, Nova sends a public unauthenticated
 request to GitHub's Nova release endpoint at the configured interval. It does
 not send memory, project context, prompts, tool output, or other Nova content.
 Disable the check with `updates.check_on_startup: false` in `config.yaml`.
+
+This is the only network request initiated by Nova's bundled hooks. It is
+separate from network requests made by the coding agent or its tools.
+
+## Installation and updates
+
+The installer downloads a versioned archive and checksum from the same GitHub
+release, rejects an unexpected archive path, and refuses to replace an existing
+destination. The checksum detects corruption or a mismatched archive, but it is
+not an independent publisher signature.
+
+Nova never updates itself automatically. The bundled `update-nova` skill treats
+an update as a reviewed merge and preserves owner-managed content. For managed
+environments, review and pin the exact release before installation or update.
 
 ## Report a vulnerability
 

@@ -26,6 +26,10 @@ memory, skills, and configuration:
 curl -fsSL https://github.com/thefactus/nova/releases/latest/download/install.sh | sh
 ```
 
+If your environment does not allow piping a downloaded script into a shell,
+download `install.sh` from the latest release, review it locally, and run it
+with `sh install.sh`.
+
 Prefer another location? Pass the destination after `sh -s --`:
 
 ```sh
@@ -213,20 +217,9 @@ memory, knowledge, skills, configuration, and local choices under your control.
 
 ## Why Nova
 
-Nova is inspired by [Hermes Agent](https://github.com/NousResearch/hermes-agent)
-and [OpenClaw](https://github.com/openclaw/openclaw). They showed how memory,
-skills, and continuous learning can make an assistant more useful over time.
-
-Both are broad, general-purpose agent environments. Nova takes a narrower idea
-from them: give the coding agents you already use a shared memory, second brain,
-reusable skills, and an autonomous learning loop with optional review.
-
-### Why not just use Hermes or OpenClaw?
-
-Hermes and OpenClaw provide broader agent environments. Nova takes a smaller
-approach. It gives Codex, Claude Code, and other native coding agents one
-understandable home for shared context without asking you to replace the tools
-you already use.
+Coding agents are increasingly capable, but useful context often stays split
+between tools, projects, and sessions. Nova gives the agents you already use
+one understandable home for memory, deeper knowledge, skills, and learning.
 
 ### Why not just use documents?
 
@@ -245,5 +238,5 @@ keeping review available when you want it.
 
 Your Nova may contain personal or company information. Before sharing it,
 review its files and Git history for private data, credentials, and tokens. See
-[`SECURITY.md`](SECURITY.md) to report a vulnerability or respond to an exposed
-credential.
+[`SECURITY.md`](SECURITY.md) for Nova's data flow, trust boundaries, safer
+organizational use, vulnerability reporting, and exposed-credential response.

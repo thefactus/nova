@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -126,6 +127,10 @@ class InstallerTest(unittest.TestCase):
                     check=True,
                 ).stdout,
                 "",
+            )
+            self.assertEqual(
+                stat.S_IMODE(destination.stat().st_mode) & 0o077,
+                0,
             )
 
     def test_refuses_to_replace_an_existing_destination(self) -> None:
