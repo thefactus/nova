@@ -58,7 +58,7 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertIn("Nova skills are additive", output["additionalContext"])
         self.assertIn("config.yaml", output["additionalContext"])
         self.assertNotIn("Nova update available", output["additionalContext"])
-        self.assertLessEqual(len(output["additionalContext"]), 500)
+        self.assertLessEqual(len(output["additionalContext"]), 750)
         self.assertFalse(index_path.exists())
         self.assertTrue(markdown_index_path.is_file())
         skill_index = markdown_index_path.read_text(encoding="utf-8")
@@ -133,6 +133,54 @@ class RuntimeContextTest(unittest.TestCase):
             "additionalContext"
         ]
         self.assertNotIn("Git safety hooks are not active", active_context)
+
+    def test_session_start_warns_when_a_configured_hook_is_not_executable(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            shutil.copytree(ROOT / "bin", root / "bin")
+            shutil.copytree(ROOT / ".githooks", root / ".githooks")
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main"], cwd=root, check=True
+            )
+            subprocess.run(
+                ["git", "config", "core.hooksPath", ".githooks"],
+                cwd=root,
+                check=True,
+            )
+            (root / ".githooks" / "pre-push").chmod(0o644)
+
+            result = self.run_fixture_hook(root, hook_path, "session-start")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Git safety hooks are not active", context)
+
+    def test_session_start_warns_when_the_safety_script_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            shutil.copytree(ROOT / ".githooks", root / ".githooks")
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main"], cwd=root, check=True
+            )
+            subprocess.run(
+                ["git", "config", "core.hooksPath", ".githooks"],
+                cwd=root,
+                check=True,
+            )
+
+            result = self.run_fixture_hook(root, hook_path, "session-start")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Git safety hooks are not active", context)
 
     def test_prompt_submit_returns_skill_routing_context(self) -> None:
         result = self.run_hook("prompt-submit")
@@ -260,7 +308,7 @@ class RuntimeContextTest(unittest.TestCase):
         self.assertIn("Nova update available: 1.2.3 -> 1.3.0", context)
         self.assertIn("Tell the owner once", context)
         self.assertIn("Do not update automatically", context)
-        self.assertLessEqual(len(context), 800)
+        self.assertLessEqual(len(context), 950)
 
     def test_session_start_is_unchanged_when_nova_is_current(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -431,11 +431,27 @@ mark_periodic_review_when_due() {
 }
 
 git_safety_hook_context() {
-  [ -x bin/nova-safety ] || return 0
-  [ ! -f .nova-public-source ] || return 0
+  tracked_public_marker=$(git show HEAD:.nova-public-source 2>/dev/null || true)
+  working_public_marker=$(sed -n '1p' .nova-public-source 2>/dev/null || true)
+  if [ "$tracked_public_marker" = \
+       "Nova public source: https://github.com/thefactus/nova" ] || \
+     [ "$working_public_marker" = \
+       "Nova public source: https://github.com/thefactus/nova" ]; then
+    public_source_url=$(git remote get-url --push origin 2>/dev/null || true)
+    case "$public_source_url" in
+      https://github.com/thefactus/nova|https://github.com/thefactus/nova.git|git@github.com:thefactus/nova|git@github.com:thefactus/nova.git|ssh://git@github.com/thefactus/nova|ssh://git@github.com/thefactus/nova.git)
+        return 0
+        ;;
+    esac
+  fi
 
   configured_hooks_path=$(git config --local --get core.hooksPath 2>/dev/null || true)
-  [ "$configured_hooks_path" = .githooks ] && return 0
+  if [ "$configured_hooks_path" = .githooks ] && \
+     [ -x bin/nova-safety ] && \
+     [ -x .githooks/pre-commit ] && \
+     [ -x .githooks/pre-push ]; then
+    return 0
+  fi
 
   printf '%s' '\n\nNova Git safety hooks are not active. Tell the owner once in your first response and offer to run `sh bin/nova-safety enable`. Preserve any existing custom `core.hooksPath`; never replace it silently.'
 }

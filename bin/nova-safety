@@ -1,6 +1,9 @@
 #!/bin/sh
 
 set -eu
+umask 077
+LC_ALL=C
+export LC_ALL
 
 program_name=nova-safety
 
@@ -106,11 +109,20 @@ scan_stream() {
   '
 }
 
+normalize_scan_input() {
+  input_path=$1
+  output_path=$2
+  if ! tr '\000' '\n' < "$input_path" > "$output_path"; then
+    fail "could not normalize content for scanning"
+  fi
+}
+
 is_sensitive_filename() {
   candidate=$1
   basename=${candidate##*/}
+  normalized_basename=$(printf '%s' "$basename" | tr '[:upper:]' '[:lower:]')
 
-  case "$basename" in
+  case "$normalized_basename" in
     .env.example|.env.sample|.env.template)
       return 1
       ;;
@@ -119,7 +131,7 @@ is_sensitive_filename() {
       ;;
   esac
 
-  case "$basename" in
+  case "$normalized_basename" in
     *.pem|*.p12|*.pfx|*.key|id_rsa|id_ed25519)
       return 0
       ;;
@@ -152,7 +164,14 @@ scan_staged_changes() {
       continue
     fi
 
-    if findings=$(git show ":$staged_path" 2>/dev/null | scan_stream); then
+    staged_content=$safety_temporary_directory/staged-content
+    normalized_staged_content=$safety_temporary_directory/normalized-staged-content
+    if ! git show ":$staged_path" > "$staged_content" 2>/dev/null; then
+      fail "could not read staged file: $staged_path"
+    fi
+    normalize_scan_input "$staged_content" "$normalized_staged_content"
+
+    if findings=$(scan_stream < "$normalized_staged_content"); then
       :
     else
       scan_status=$?
@@ -173,21 +192,86 @@ scan_staged_changes() {
   fi
 }
 
-scan_git_history() {
+scan_reachable_objects() {
+  tips_file=$1
+  [ -s "$tips_file" ] || return 0
+
   create_temporary_directory
-  history_paths=$safety_temporary_directory/history-paths
-  git log --all --name-only --pretty=format: -- . | sed '/^$/d' | sort -u > "$history_paths"
+  object_listing=$safety_temporary_directory/object-listing
+  object_ids=$safety_temporary_directory/object-ids
+  object_types=$safety_temporary_directory/object-types
+  blob_ids=$safety_temporary_directory/blob-ids
+  historical_paths=$safety_temporary_directory/history-paths
+  tip_paths=$safety_temporary_directory/tip-paths
+  blob_contents=$safety_temporary_directory/blob-contents
+  normalized_blob_contents=$safety_temporary_directory/normalized-blob-contents
+
+  : > "$historical_paths"
+
+  if ! git rev-list --objects --no-object-names --stdin \
+    < "$tips_file" > "$object_listing"; then
+    fail "could not enumerate Git objects"
+  fi
+  sed '/^$/d' "$object_listing" | sort -u > "$object_ids"
+
+  if ! git -c core.quotePath=false log --stdin -m --name-only --format= -- \
+    < "$tips_file" > "$historical_paths"; then
+    fail "could not enumerate paths in Git history"
+  fi
+
+  while IFS= read -r tip; do
+    [ -n "$tip" ] || continue
+    peeled_tip=$(git rev-parse "$tip^{}" 2>/dev/null) || \
+      fail "could not resolve a Git tip"
+    peeled_type=$(git cat-file -t "$peeled_tip" 2>/dev/null) || \
+      fail "could not identify a Git tip"
+    case "$peeled_type" in
+      commit|blob)
+        ;;
+      tree)
+        if ! git -c core.quotePath=false ls-tree -r --name-only "$peeled_tip" \
+          > "$tip_paths"; then
+          fail "could not enumerate paths in a Git tree"
+        fi
+        cat "$tip_paths" >> "$historical_paths"
+        ;;
+      *)
+        fail "unsupported Git tip type: $peeled_type"
+        ;;
+    esac
+  done < "$tips_file"
+
+  sort -u "$historical_paths" -o "$historical_paths"
   blocked=false
 
   while IFS= read -r historical_path; do
     [ -n "$historical_path" ] || continue
+    case "$historical_path" in
+      \"*\") fail "could not safely inspect a quoted Git path" ;;
+    esac
     if is_sensitive_filename "$historical_path"; then
       warn "blocked sensitive filename in Git history: $historical_path"
       blocked=true
     fi
-  done < "$history_paths"
+  done < "$historical_paths"
 
-  if findings=$(git log --all -p --full-history --no-ext-diff --no-textconv --pretty=format: -- . | scan_stream); then
+  if ! git cat-file --batch-check='%(objectname) %(objecttype)' \
+    < "$object_ids" > "$object_types"; then
+    fail "could not identify Git objects"
+  fi
+  if awk 'NF != 2 || $2 == "missing" { exit 1 }' "$object_types"; then
+    :
+  else
+    fail "could not identify a Git object"
+  fi
+  awk '$2 == "blob" {print $1}' "$object_types" > "$blob_ids"
+
+  if ! git cat-file --batch < "$blob_ids" > "$blob_contents"; then
+    fail "could not read Git blobs"
+  fi
+  normalize_scan_input "$blob_contents" "$normalized_blob_contents"
+
+  if findings=$(scan_stream < "$normalized_blob_contents"); then
     :
   else
     scan_status=$?
@@ -196,7 +280,7 @@ scan_git_history() {
       printf '%s\n' "$findings" | sed 's/^/  detected: /' >&2
       blocked=true
     else
-      fail "could not scan Git history"
+      fail "could not scan Git blobs"
     fi
   fi
 
@@ -205,6 +289,22 @@ scan_git_history() {
     warn "removing a current line is not enough; the older commit must also be cleaned"
     return 1
   fi
+}
+
+collect_local_tips() {
+  tips_file=$1
+  : > "$tips_file"
+  git for-each-ref --format='%(objectname)' refs/heads refs/tags refs/remotes \
+    >> "$tips_file"
+  git rev-parse --verify HEAD >> "$tips_file" 2>/dev/null || true
+  sort -u "$tips_file" -o "$tips_file"
+}
+
+scan_git_history() {
+  create_temporary_directory
+  local_tips=$safety_temporary_directory/local-tips
+  collect_local_tips "$local_tips"
+  scan_reachable_objects "$local_tips"
 }
 
 validate_remote_name() {
@@ -223,11 +323,16 @@ remote_url_has_embedded_credentials() {
     {
       scheme_end = index($0, "://")
       if (!scheme_end) exit 1
+      scheme = tolower(substr($0, 1, scheme_end - 1))
       authority = substr($0, scheme_end + 3)
       slash = index(authority, "/")
       if (slash) authority = substr(authority, 1, slash - 1)
-      if (authority ~ /@/) exit 0
-      exit 1
+      at = index(authority, "@")
+      if (!at) exit 1
+      userinfo = substr(authority, 1, at - 1)
+      if (scheme == "ssh" && userinfo !~ /:/) exit 1
+      if (scheme == "git" && userinfo !~ /:/) exit 1
+      exit 0
     }
   '
 }
@@ -236,7 +341,9 @@ github_slug_from_url() {
   remote_url=$1
   printf '%s\n' "$remote_url" | sed -n -E \
     -e 's#^https?://github\.com/([^/]+/[^/]+)$#\1#p' \
-    -e 's#^git@github\.com:([^/]+/[^/]+)$#\1#p' | sed 's/\.git$//' | sed -n '1p'
+    -e 's#^git@github\.com:([^/]+/[^/]+)$#\1#p' \
+    -e 's#^ssh://git@github\.com/([^/]+/[^/]+)$#\1#p' | \
+    sed 's/\.git$//' | sed -n '1p'
 }
 
 verify_github_private_when_possible() {
@@ -245,7 +352,8 @@ verify_github_private_when_possible() {
   [ -n "$github_slug" ] || return 2
   command -v gh >/dev/null 2>&1 || return 2
 
-  if visibility=$(gh repo view "$github_slug" --json visibility --jq '.visibility' 2>/dev/null); then
+  if visibility=$(GH_HTTP_TIMEOUT=${GH_HTTP_TIMEOUT:-5} \
+    gh repo view "$github_slug" --json visibility --jq '.visibility' 2>/dev/null); then
     case "$visibility" in
       PRIVATE)
         return 0
@@ -267,40 +375,76 @@ approval_key() {
 approve_remote() {
   remote_name=${1:-origin}
   validate_remote_name "$remote_name"
-  remote_url=$(git remote get-url "$remote_name" 2>/dev/null) || fail "remote not found: $remote_name"
-
-  if remote_url_has_embedded_credentials "$remote_url"; then
-    fail "remote URL contains embedded credentials"
+  exec 3<&0
+  create_temporary_directory
+  push_urls=$safety_temporary_directory/push-urls
+  if ! git remote get-url --push --all "$remote_name" > "$push_urls" 2>/dev/null; then
+    fail "remote not found: $remote_name"
   fi
-
+  [ -s "$push_urls" ] || fail "remote has no push URL: $remote_name"
   scan_git_history
-  safe_remote_url=$(redact_remote_url "$remote_url")
   say "Nova backup safety review"
-  say "Remote: $remote_name ($safe_remote_url)"
 
-  if verify_github_private_when_possible "$remote_url"; then
-    say "Visibility: PRIVATE (verified with GitHub CLI)"
-  else
-    verification_status=$?
-    [ "$verification_status" -ne 1 ] || return 1
-    say "Nova could not verify this remote's visibility automatically."
-    printf 'Type PRIVATE only after confirming that the repository is private: '
-    IFS= read -r confirmation || fail "private repository confirmation is required"
-    [ "$confirmation" = PRIVATE ] || fail "remote was not approved"
-  fi
+  while IFS= read -r remote_url; do
+    [ -n "$remote_url" ] || fail "remote has an empty push URL: $remote_name"
+    if remote_url_has_embedded_credentials "$remote_url"; then
+      fail "remote URL contains embedded credentials"
+    fi
 
-  approved_hash=$(remote_url_hash "$remote_url")
-  git config --local "$(approval_key "$remote_name")" "$approved_hash"
+    safe_remote_url=$(redact_remote_url "$remote_url")
+    say "Remote: $remote_name ($safe_remote_url)"
+
+    if verify_github_private_when_possible "$remote_url"; then
+      say "Visibility: PRIVATE (verified with GitHub CLI)"
+    else
+      verification_status=$?
+      [ "$verification_status" -ne 1 ] || return 1
+      say "Nova could not verify this remote's visibility automatically."
+      printf 'Type PRIVATE only after confirming that this destination is private: '
+      IFS= read -r confirmation <&3 || fail "private repository confirmation is required"
+      [ "$confirmation" = PRIVATE ] || fail "remote was not approved"
+    fi
+  done < "$push_urls"
+
+  key=$(approval_key "$remote_name")
+  git config --local --unset-all "$key" >/dev/null 2>&1 || true
+  while IFS= read -r remote_url; do
+    approved_hash=$(remote_url_hash "$remote_url")
+    git config --local --add "$key" "$approved_hash"
+  done < "$push_urls"
   say "Approved private backup remote: $remote_name"
 }
 
 remote_is_approved() {
   remote_name=$1
   remote_url=$2
-  approved_hash=$(git config --local --get "$(approval_key "$remote_name")" 2>/dev/null || true)
-  [ -n "$approved_hash" ] || return 1
   current_hash=$(remote_url_hash "$remote_url")
-  [ "$approved_hash" = "$current_hash" ]
+  git config --local --get-all "$(approval_key "$remote_name")" 2>/dev/null | \
+    grep -Fx "$current_hash" >/dev/null
+}
+
+is_official_public_source() {
+  remote_name=$1
+  push_urls=$2
+  outgoing_tips=$3
+  [ "$remote_name" = origin ] || return 1
+
+  while IFS= read -r public_source_url; do
+    [ "$(github_slug_from_url "$public_source_url")" = thefactus/nova ] || \
+      return 1
+  done < "$push_urls"
+
+  if [ ! -s "$outgoing_tips" ]; then
+    [ "$(git show HEAD:.nova-public-source 2>/dev/null)" = \
+      "Nova public source: https://github.com/thefactus/nova" ]
+    return
+  fi
+
+  while IFS= read -r outgoing_tip; do
+    [ -n "$outgoing_tip" ] || continue
+    [ "$(git show "$outgoing_tip:.nova-public-source" 2>/dev/null)" = \
+      "Nova public source: https://github.com/thefactus/nova" ] || return 1
+  done < "$outgoing_tips"
 }
 
 enable_hooks() {
@@ -328,23 +472,69 @@ enable_hooks() {
 pre_push() {
   remote_name=${1:-origin}
   remote_url=${2:-}
+  case "$remote_name" in
+    *://*|/*|*@*:*)
+      fail "push by URL is not supported; configure and approve a named remote"
+      ;;
+  esac
   validate_remote_name "$remote_name"
   [ -n "$remote_url" ] || remote_url=$(git remote get-url "$remote_name" 2>/dev/null || true)
   [ -n "$remote_url" ] || fail "could not resolve remote: $remote_name"
 
-  scan_git_history
+  create_temporary_directory
+  current_push_urls=$safety_temporary_directory/current-push-urls
+  if ! git remote get-url --push --all "$remote_name" \
+    > "$current_push_urls" 2>/dev/null; then
+    fail "could not resolve push URLs for remote: $remote_name"
+  fi
+  [ -s "$current_push_urls" ] || \
+    fail "remote has no push URL: $remote_name"
+  outgoing_tips=$safety_temporary_directory/outgoing-tips
+  : > "$outgoing_tips"
+  while IFS=' ' read -r local_ref local_oid remote_ref remote_oid extra; do
+    [ -n "$local_ref$local_oid$remote_ref$remote_oid$extra" ] || continue
+    [ -z "$extra" ] || fail "could not parse the pre-push update list"
+    [ -n "$local_ref" ] && [ -n "$local_oid" ] && \
+      [ -n "$remote_ref" ] && [ -n "$remote_oid" ] || \
+      fail "could not parse the pre-push update list"
+    case "$local_oid" in
+      *[!0-9a-fA-F]*) fail "pre-push supplied an invalid object ID" ;;
+    esac
+    if ! printf '%s\n' "$local_oid" | grep -Eq '^0+$'; then
+      printf '%s\n' "$local_oid" >> "$outgoing_tips"
+    fi
+  done
+  sort -u "$outgoing_tips" -o "$outgoing_tips"
+  scan_reachable_objects "$outgoing_tips"
 
-  if [ -f .nova-public-source ]; then
+  if is_official_public_source "$remote_name" "$current_push_urls" "$outgoing_tips"; then
     return 0
   fi
 
-  if ! remote_is_approved "$remote_name" "$remote_url"; then
+  all_push_urls_approved=true
+  while IFS= read -r current_push_url; do
+    if ! remote_is_approved "$remote_name" "$current_push_url"; then
+      all_push_urls_approved=false
+    fi
+  done < "$current_push_urls"
+
+  if [ "$all_push_urls_approved" = false ] || \
+     ! remote_is_approved "$remote_name" "$remote_url"; then
     safe_remote_url=$(redact_remote_url "$remote_url")
     warn "push blocked because this backup remote has not been approved"
     warn "remote: $remote_name ($safe_remote_url)"
     warn "run: sh bin/nova-safety approve $remote_name"
     return 1
   fi
+
+  while IFS= read -r current_push_url; do
+    if verify_github_private_when_possible "$current_push_url"; then
+      :
+    else
+      verification_status=$?
+      [ "$verification_status" -ne 1 ] || return 1
+    fi
+  done < "$current_push_urls"
 }
 
 usage() {

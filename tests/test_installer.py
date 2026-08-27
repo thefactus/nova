@@ -42,7 +42,12 @@ class InstallerTest(unittest.TestCase):
                 data = content.encode()
                 info = tarfile.TarInfo(f"nova-v{VERSION}/{relative_path}")
                 info.size = len(data)
-                info.mode = 0o755 if relative_path.startswith(("bin/", ".githooks/")) else 0o644
+                source = ROOT / relative_path
+                info.mode = (
+                    stat.S_IMODE(source.stat().st_mode)
+                    if source.exists()
+                    else 0o644
+                )
                 archive.addfile(info, io.BytesIO(data))
 
         checksum = hashlib.sha256(archive_path.read_bytes()).hexdigest()

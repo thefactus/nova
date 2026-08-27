@@ -109,7 +109,7 @@ New installations enable local Git safeguards automatically:
 ```text
 git add .      → stages files without uploading them
 git commit     → checks staged filenames and content before committing
-git push       → checks the full local history and approved backup remote
+git push       → checks every Git object being sent and the approved backup remote
 ```
 
 The first push to a backup remote is blocked until you review and approve it:
@@ -119,10 +119,12 @@ sh bin/nova-safety approve origin
 git push
 ```
 
-When GitHub CLI is installed and authenticated, Nova verifies that a GitHub
-remote is private. Otherwise, it requires an explicit private-repository
-confirmation. Approval is tied to the exact remote URL, so changing the URL
-requires another review.
+The checks use the POSIX shell and Git already present on the machine; no extra
+package is required. When GitHub CLI is installed and authenticated, Nova
+verifies that a GitHub remote is private during approval and rechecks it before
+pushes when GitHub is reachable. Otherwise, it requires an explicit
+private-repository confirmation. Approval is tied to each effective push URL,
+so changing a `pushurl` requires another review.
 
 The built-in scanner catches common credentials, private keys, credential
 files, and secrets retained in Git history. It does not understand every secret
