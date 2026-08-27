@@ -1,0 +1,3 @@
+This marker identifies the public Nova distribution repository.
+
+It is excluded from release archives. A personal Nova must not contain it.

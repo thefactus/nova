@@ -3,7 +3,7 @@
 set -eu
 umask 077
 
-NOVA_INSTALL_VERSION=0.1.6
+NOVA_INSTALL_VERSION=0.1.7
 NOVA_RELEASE_BASE_URL=${NOVA_RELEASE_BASE_URL:-https://github.com/thefactus/nova/releases/download}
 
 fail() {
@@ -106,6 +106,7 @@ destination_parent=$(dirname "$destination")
 mkdir -p "$destination_parent"
 
 git -C "$extracted_directory" init -q -b main
+git -C "$extracted_directory" config core.hooksPath .githooks
 git -C "$extracted_directory" add --all
 
 if git -C "$extracted_directory" config user.name >/dev/null 2>&1 && \

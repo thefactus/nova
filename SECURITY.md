@@ -40,6 +40,39 @@ The public Nova repository distributes empty starter memory and knowledge
 files. A person's working Nova is a separate repository and must not be pushed
 to the public Nova repository.
 
+## Git safety guard
+
+New Nova installations configure `core.hooksPath=.githooks` inside the working
+repository. The pre-commit hook checks staged filenames and content before they
+enter history. The pre-push hook scans all local Git history and requires the
+destination URL to be approved as a private backup remote before the first
+push. Changing that URL invalidates the approval.
+
+Run the review explicitly with:
+
+```sh
+sh bin/nova-safety approve origin
+```
+
+When an authenticated GitHub CLI is available, the review verifies GitHub
+visibility directly. Otherwise, it asks the owner to confirm that the remote is
+private. That command may contact GitHub through GitHub CLI; automatic commit
+and push hooks do not make network requests beyond Git's requested push.
+
+The guard is defense in depth, not a security boundary:
+
+- Git allows hooks to be bypassed with `--no-verify`.
+- Pattern matching cannot recognize every credential or determine whether an
+  ordinary note, image, PDF, or company document is confidential.
+- Private-remote approval records the reviewed URL; non-GitHub visibility
+  cannot be monitored continuously.
+- Existing custom `core.hooksPath` settings are preserved instead of silently
+  replaced, so their owner must integrate the Nova hooks manually.
+
+The distributed `.gitignore` excludes common credential filenames and local
+state, but ignore rules do not remove files that were already committed. Never
+treat a passed scan as authorization to publish a working Nova publicly.
+
 ## Autonomous learning and review
 
 Nova learns autonomously by default. When completed work produces a justified,

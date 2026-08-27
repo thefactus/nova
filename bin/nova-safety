@@ -1,0 +1,391 @@
+#!/bin/sh
+
+set -eu
+
+program_name=nova-safety
+
+say() {
+  printf '%s\n' "$*"
+}
+
+warn() {
+  printf '%s: %s\n' "$program_name" "$*" >&2
+}
+
+fail() {
+  warn "$*"
+  exit 1
+}
+
+repository_root() {
+  git rev-parse --show-toplevel 2>/dev/null || fail "run this inside a Nova Git repository"
+}
+
+calculate_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+    return
+  fi
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 | awk '{print $1}'
+    return
+  fi
+
+  fail "sha256sum or shasum is required"
+}
+
+redact_remote_url() {
+  printf '%s\n' "$1" | sed -E 's#(https?://)[^/@]+@#\1[REDACTED]@#'
+}
+
+scan_stream() {
+  awk '
+    function report(rule) {
+      if (!seen[rule]) {
+        print rule
+        seen[rule] = 1
+      }
+      found = 1
+    }
+
+    {
+      raw = $0
+      lower = tolower(raw)
+
+      if (raw ~ /-----BEGIN ([A-Z0-9 ]+ )?PRIVATE KEY-----/) {
+        report("private key")
+      }
+      if (raw ~ /AKIA[0-9A-Z]{16}/) {
+        report("AWS access key")
+      }
+      if (raw ~ /(gh[pousr]_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{20,})/) {
+        report("GitHub token")
+      }
+      if (raw ~ /xox[baprs]-[A-Za-z0-9-]{10,}/) {
+        report("Slack token")
+      }
+      if (raw ~ /sk-(proj-)?[A-Za-z0-9_-]{20,}/) {
+        report("OpenAI token")
+      }
+      if (raw ~ /sk-ant-[A-Za-z0-9_-]{20,}/) {
+        report("Anthropic token")
+      }
+      if (raw ~ /AIza[0-9A-Za-z_-]{30,}/) {
+        report("Google API key")
+      }
+      if (raw ~ /[sr]k_live_[0-9A-Za-z]{16,}/) {
+        report("Stripe live key")
+      }
+      if (raw ~ /npm_[A-Za-z0-9]{20,}/) {
+        report("npm token")
+      }
+      if (raw ~ /hf_[A-Za-z0-9]{20,}/) {
+        report("Hugging Face token")
+      }
+      if (raw ~ /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/) {
+        report("JSON web token")
+      }
+      basic_auth_url = "https?" ":" "/" "/" "[^[:space:]\\/:@]+:[^[:space:]\\/@]+@"
+      if (lower ~ basic_auth_url) {
+        report("credential embedded in URL")
+      }
+      if (lower ~ /[?&](api[_-]?key|access[_-]?token|auth[_-]?token|token|key|secret|signature|sig)=[a-z0-9_\/.+=-]{12,}/) {
+        report("credential embedded in URL query")
+      }
+
+      placeholder = lower ~ /(\[redacted\]|<redacted>|placeholder|example|sample|changeme|your[_-]|\$\{|\$[a-z_])/
+      if (!placeholder && lower ~ /(^|[^a-z0-9_])(password|passwd|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)[[:space:]]*[:=]?[[:space:]]*["]?[a-z0-9_\/.+=-]{12,}/) {
+        report("credential-like assignment")
+      }
+    }
+
+    END {
+      if (found) exit 7
+    }
+  '
+}
+
+is_sensitive_filename() {
+  candidate=$1
+  basename=${candidate##*/}
+
+  case "$basename" in
+    .env.example|.env.sample|.env.template)
+      return 1
+      ;;
+    .env|.env.*|.netrc|_netrc|auth.json|credentials.json|credentials.*.json|secrets.json|secrets.yaml|secrets.yml)
+      return 0
+      ;;
+  esac
+
+  case "$basename" in
+    *.pem|*.p12|*.pfx|*.key|id_rsa|id_ed25519)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+create_temporary_directory() {
+  if [ -n "${safety_temporary_directory:-}" ]; then
+    return
+  fi
+
+  safety_temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/nova-safety.XXXXXX")
+  trap 'rm -rf "$safety_temporary_directory"' EXIT HUP INT TERM
+}
+
+scan_staged_changes() {
+  create_temporary_directory
+  staged_paths=$safety_temporary_directory/staged-paths
+  git diff --cached --name-only --diff-filter=ACMR -- . > "$staged_paths"
+  blocked=false
+
+  while IFS= read -r staged_path; do
+    [ -n "$staged_path" ] || continue
+
+    if is_sensitive_filename "$staged_path"; then
+      warn "blocked sensitive filename: $staged_path"
+      blocked=true
+      continue
+    fi
+
+    if findings=$(git show ":$staged_path" 2>/dev/null | scan_stream); then
+      :
+    else
+      scan_status=$?
+      if [ "$scan_status" -eq 7 ]; then
+        warn "blocked possible secret in: $staged_path"
+        printf '%s\n' "$findings" | sed 's/^/  detected: /' >&2
+        blocked=true
+      else
+        fail "could not scan staged file: $staged_path"
+      fi
+    fi
+  done < "$staged_paths"
+
+  if [ "$blocked" = true ]; then
+    warn "commit stopped before sensitive data entered Git history"
+    warn "replace the value with a placeholder or unstage the file, then retry"
+    return 1
+  fi
+}
+
+scan_git_history() {
+  create_temporary_directory
+  history_paths=$safety_temporary_directory/history-paths
+  git log --all --name-only --pretty=format: -- . | sed '/^$/d' | sort -u > "$history_paths"
+  blocked=false
+
+  while IFS= read -r historical_path; do
+    [ -n "$historical_path" ] || continue
+    if is_sensitive_filename "$historical_path"; then
+      warn "blocked sensitive filename in Git history: $historical_path"
+      blocked=true
+    fi
+  done < "$history_paths"
+
+  if findings=$(git log --all -p --full-history --no-ext-diff --no-textconv --pretty=format: -- . | scan_stream); then
+    :
+  else
+    scan_status=$?
+    if [ "$scan_status" -eq 7 ]; then
+      warn "blocked possible secret retained in Git history"
+      printf '%s\n' "$findings" | sed 's/^/  detected: /' >&2
+      blocked=true
+    else
+      fail "could not scan Git history"
+    fi
+  fi
+
+  if [ "$blocked" = true ]; then
+    warn "push stopped before the repository left this machine"
+    warn "removing a current line is not enough; the older commit must also be cleaned"
+    return 1
+  fi
+}
+
+validate_remote_name() {
+  remote_name=$1
+  case "$remote_name" in
+    ''|*[!A-Za-z0-9._-]*) fail "unsupported remote name: $remote_name" ;;
+  esac
+}
+
+remote_url_hash() {
+  printf '%s' "$1" | calculate_sha256
+}
+
+remote_url_has_embedded_credentials() {
+  printf '%s\n' "$1" | awk '
+    {
+      scheme_end = index($0, "://")
+      if (!scheme_end) exit 1
+      authority = substr($0, scheme_end + 3)
+      slash = index(authority, "/")
+      if (slash) authority = substr(authority, 1, slash - 1)
+      if (authority ~ /@/) exit 0
+      exit 1
+    }
+  '
+}
+
+github_slug_from_url() {
+  remote_url=$1
+  printf '%s\n' "$remote_url" | sed -n -E \
+    -e 's#^https?://github\.com/([^/]+/[^/]+)$#\1#p' \
+    -e 's#^git@github\.com:([^/]+/[^/]+)$#\1#p' | sed 's/\.git$//' | sed -n '1p'
+}
+
+verify_github_private_when_possible() {
+  remote_url=$1
+  github_slug=$(github_slug_from_url "$remote_url")
+  [ -n "$github_slug" ] || return 2
+  command -v gh >/dev/null 2>&1 || return 2
+
+  if visibility=$(gh repo view "$github_slug" --json visibility --jq '.visibility' 2>/dev/null); then
+    case "$visibility" in
+      PRIVATE)
+        return 0
+        ;;
+      PUBLIC|INTERNAL)
+        warn "remote visibility is $visibility; a working Nova must use a private repository"
+        return 1
+        ;;
+    esac
+  fi
+
+  return 2
+}
+
+approval_key() {
+  printf 'novaSafety.%s.approvedUrlHash' "$1"
+}
+
+approve_remote() {
+  remote_name=${1:-origin}
+  validate_remote_name "$remote_name"
+  remote_url=$(git remote get-url "$remote_name" 2>/dev/null) || fail "remote not found: $remote_name"
+
+  if remote_url_has_embedded_credentials "$remote_url"; then
+    fail "remote URL contains embedded credentials"
+  fi
+
+  scan_git_history
+  safe_remote_url=$(redact_remote_url "$remote_url")
+  say "Nova backup safety review"
+  say "Remote: $remote_name ($safe_remote_url)"
+
+  if verify_github_private_when_possible "$remote_url"; then
+    say "Visibility: PRIVATE (verified with GitHub CLI)"
+  else
+    verification_status=$?
+    [ "$verification_status" -ne 1 ] || return 1
+    say "Nova could not verify this remote's visibility automatically."
+    printf 'Type PRIVATE only after confirming that the repository is private: '
+    IFS= read -r confirmation || fail "private repository confirmation is required"
+    [ "$confirmation" = PRIVATE ] || fail "remote was not approved"
+  fi
+
+  approved_hash=$(remote_url_hash "$remote_url")
+  git config --local "$(approval_key "$remote_name")" "$approved_hash"
+  say "Approved private backup remote: $remote_name"
+}
+
+remote_is_approved() {
+  remote_name=$1
+  remote_url=$2
+  approved_hash=$(git config --local --get "$(approval_key "$remote_name")" 2>/dev/null || true)
+  [ -n "$approved_hash" ] || return 1
+  current_hash=$(remote_url_hash "$remote_url")
+  [ "$approved_hash" = "$current_hash" ]
+}
+
+enable_hooks() {
+  root=$(repository_root)
+  [ -x "$root/.githooks/pre-commit" ] || fail "Nova pre-commit hook is missing"
+  [ -x "$root/.githooks/pre-push" ] || fail "Nova pre-push hook is missing"
+
+  configured_hooks_path=$(git config --local --get core.hooksPath 2>/dev/null || true)
+  case "$configured_hooks_path" in
+    '')
+      git config --local core.hooksPath .githooks
+      say "Nova Git safety hooks enabled."
+      ;;
+    .githooks)
+      say "Nova Git safety hooks are already enabled."
+      ;;
+    *)
+      warn "existing core.hooksPath was preserved: $configured_hooks_path"
+      warn "Nova safety hooks were not enabled; combine the hook directories manually"
+      return 2
+      ;;
+  esac
+}
+
+pre_push() {
+  remote_name=${1:-origin}
+  remote_url=${2:-}
+  validate_remote_name "$remote_name"
+  [ -n "$remote_url" ] || remote_url=$(git remote get-url "$remote_name" 2>/dev/null || true)
+  [ -n "$remote_url" ] || fail "could not resolve remote: $remote_name"
+
+  scan_git_history
+
+  if [ -f .nova-public-source ]; then
+    return 0
+  fi
+
+  if ! remote_is_approved "$remote_name" "$remote_url"; then
+    safe_remote_url=$(redact_remote_url "$remote_url")
+    warn "push blocked because this backup remote has not been approved"
+    warn "remote: $remote_name ($safe_remote_url)"
+    warn "run: sh bin/nova-safety approve $remote_name"
+    return 1
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+Usage: sh bin/nova-safety COMMAND [REMOTE]
+
+Commands:
+  enable                 Enable Nova's Git hooks when no custom hook path exists
+  check                  Scan staged files and all local Git history
+  approve [remote]       Review and approve a private backup remote
+  pre-commit             Run the automatic staged-content check
+  pre-push remote url    Run the automatic history and remote check
+EOF
+}
+
+root=$(repository_root)
+cd "$root"
+
+case "${1:-}" in
+  enable)
+    enable_hooks
+    ;;
+  check)
+    scan_staged_changes
+    scan_git_history
+    say "Nova safety check passed."
+    ;;
+  approve)
+    approve_remote "${2:-origin}"
+    ;;
+  pre-commit)
+    scan_staged_changes
+    ;;
+  pre-push)
+    pre_push "${2:-origin}" "${3:-}"
+    ;;
+  -h|--help|help|'')
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -52,7 +52,13 @@ owner has evolved. Treat an update as a reviewed merge, not a fresh install.
    a distributed default that the owner intentionally changed. Preserve the
    owner's setting, verify its behavior directly, and report the mismatch
    instead of changing owner intent to satisfy the assertion.
-7. Report the previous and resulting versions, what changed, what remained
+7. When the release contains `bin/nova-safety`, run
+   `sh bin/nova-safety enable` after its `.githooks/` files are present. If no
+   hook path is configured, this safely enables Nova's hooks. If the repository
+   already uses a custom `core.hooksPath`, preserve it, report that Nova's hooks
+   remain inactive, and ask before integrating the two hook sets. Do not approve
+   a backup remote or provide the `PRIVATE` confirmation on the owner's behalf.
+8. Report the previous and resulting versions, what changed, what remained
    local, validation performed, and anything still requiring a decision.
 
 If the target release cannot be verified, the current state is not recoverable,

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec sh bin/nova-safety pre-push "$@"

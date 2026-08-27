@@ -13,9 +13,13 @@ class CanonicalLayoutTest(unittest.TestCase):
         expected = [
             ".claude/settings.json",
             ".codex/hooks.json",
+            ".githooks/pre-commit",
+            ".githooks/pre-push",
             ".gitattributes",
             ".github/workflows/verify.yml",
+            ".nova-public-source",
             "AGENTS.md",
+            "bin/nova-safety",
             "CLAUDE.md",
             "config.yaml",
             "SECURITY.md",
@@ -59,6 +63,7 @@ class CanonicalLayoutTest(unittest.TestCase):
             attributes,
             ".github export-ignore\n"
             ".gitattributes export-ignore\n"
+            ".nova-public-source export-ignore\n"
             "scripts export-ignore\n"
             "tests export-ignore\n",
         )
@@ -81,6 +86,25 @@ class CanonicalLayoutTest(unittest.TestCase):
             security,
         )
         self.assertIn("Rotate or revoke it first.", security)
+
+    def test_git_safety_guard_is_distributed_and_upgrade_aware(self) -> None:
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        update_skill = (ROOT / "skills/update-nova/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("config core.hooksPath .githooks", installer)
+        self.assertIn("git commit", readme)
+        self.assertIn("git push", readme)
+        self.assertIn("sh bin/nova-safety approve origin", readme)
+        self.assertIn("pre-commit and pre-push", agents)
+        self.assertIn("defense in depth", security)
+        self.assertIn("sh bin/nova-safety enable", update_skill)
+        self.assertIn("custom `core.hooksPath`", update_skill)
+        self.assertIn("on the owner's behalf", update_skill)
 
     def test_startup_release_check_is_disclosed_and_optional(self) -> None:
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")

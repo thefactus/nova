@@ -177,6 +177,21 @@ them uncommitted and explain why. This policy applies to the working Nova
 repository, not to external project repositories. Never push, tag, create a
 release, or otherwise publish without explicit owner authorization.
 
+### Git safety guard
+
+Installed Novas include local pre-commit and pre-push checks under `.githooks/`.
+Do not disable or bypass them to complete a task. When `bin/nova-safety` exists:
+
+- use `sh bin/nova-safety check` for an explicit staged-content and history scan;
+- use `sh bin/nova-safety approve <remote>` only with the owner's explicit
+  confirmation that the destination is a private backup repository;
+- never type or infer the private-repository confirmation on the owner's behalf;
+- if `core.hooksPath` points somewhere else, preserve the existing hook path and
+  explain that the Nova guard must be integrated rather than overwriting it.
+
+A successful scan does not prove that ordinary documents are safe to share.
+Personal memory and second-brain content remain private by default.
+
 ## Safety and communication
 
 - Never store or expose secrets, credentials, authentication state, or private

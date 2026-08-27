@@ -46,7 +46,10 @@ tar -tzf "$archive_path" > "$archive_listing"
 
 for required_path in \
   "nova-v$version/AGENTS.md" \
+  "nova-v$version/bin/nova-safety" \
   "nova-v$version/config.yaml" \
+  "nova-v$version/.githooks/pre-commit" \
+  "nova-v$version/.githooks/pre-push" \
   "nova-v$version/hooks/nova_context.sh" \
   "nova-v$version/skills/update-nova/SKILL.md"
 do
@@ -55,6 +58,11 @@ do
     exit 1
   }
 done
+
+if grep -Fx "nova-v$version/.nova-public-source" "$archive_listing" >/dev/null; then
+  printf 'release archive contains the public-source marker\n' >&2
+  exit 1
+fi
 
 for excluded_path in .github scripts tests; do
   if grep -F "nova-v$version/$excluded_path/" "$archive_listing" >/dev/null; then

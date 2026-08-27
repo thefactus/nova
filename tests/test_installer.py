@@ -28,12 +28,21 @@ class InstallerTest(unittest.TestCase):
                 "VERSION": f"{VERSION}\n",
                 "AGENTS.md": "# Nova\n",
                 "memories/USER.md": "",
+                "bin/nova-safety": (ROOT / "bin/nova-safety").read_text(
+                    encoding="utf-8"
+                ),
+                ".githooks/pre-commit": (
+                    ROOT / ".githooks/pre-commit"
+                ).read_text(encoding="utf-8"),
+                ".githooks/pre-push": (ROOT / ".githooks/pre-push").read_text(
+                    encoding="utf-8"
+                ),
             }
             for relative_path, content in files.items():
                 data = content.encode()
                 info = tarfile.TarInfo(f"nova-v{VERSION}/{relative_path}")
                 info.size = len(data)
-                info.mode = 0o644
+                info.mode = 0o755 if relative_path.startswith(("bin/", ".githooks/")) else 0o644
                 archive.addfile(info, io.BytesIO(data))
 
         checksum = hashlib.sha256(archive_path.read_bytes()).hexdigest()
@@ -132,6 +141,18 @@ class InstallerTest(unittest.TestCase):
                 stat.S_IMODE(destination.stat().st_mode) & 0o077,
                 0,
             )
+            self.assertEqual(
+                subprocess.run(
+                    ["git", "-C", str(destination), "config", "--get", "core.hooksPath"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip(),
+                ".githooks",
+            )
+            self.assertTrue((destination / "bin/nova-safety").stat().st_mode & stat.S_IXUSR)
+            self.assertTrue((destination / ".githooks/pre-commit").stat().st_mode & stat.S_IXUSR)
+            self.assertTrue((destination / ".githooks/pre-push").stat().st_mode & stat.S_IXUSR)
 
     def test_refuses_to_replace_an_existing_destination(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

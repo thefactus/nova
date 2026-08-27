@@ -102,6 +102,38 @@ class RuntimeContextTest(unittest.TestCase):
             index,
         )
 
+    def test_session_start_warns_when_git_safety_hooks_are_inactive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook_path = self.prepare_fixture(root, "")
+            shutil.copytree(ROOT / "bin", root / "bin")
+            shutil.copytree(ROOT / ".githooks", root / ".githooks")
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main"], cwd=root, check=True
+            )
+
+            inactive = self.run_fixture_hook(root, hook_path, "session-start")
+            enabled = subprocess.run(
+                ["/bin/sh", "bin/nova-safety", "enable"],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            active = self.run_fixture_hook(root, hook_path, "session-start")
+
+        self.assertEqual(inactive.returncode, 0, inactive.stderr)
+        inactive_context = json.loads(inactive.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Git safety hooks are not active", inactive_context)
+        self.assertEqual(enabled.returncode, 0, enabled.stderr)
+        self.assertEqual(active.returncode, 0, active.stderr)
+        active_context = json.loads(active.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertNotIn("Git safety hooks are not active", active_context)
+
     def test_prompt_submit_returns_skill_routing_context(self) -> None:
         result = self.run_hook("prompt-submit")
 

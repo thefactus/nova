@@ -11,8 +11,8 @@ Nova adds a small, understandable layer of shared context without replacing
 native behavior, burying coding agents in rules, or requiring a complex setup.
 Each owner can evolve it for their own work.
 
-Current version `0.1.6`. Published releases use a matching `v`-prefixed Git
-tag, such as `v0.1.6`.
+Current version `0.1.7`. Published releases use a matching `v`-prefixed Git
+tag, such as `v0.1.7`.
 
 ## Start using Nova
 
@@ -101,6 +101,37 @@ also ask you to review Nova's hooks, which apply only inside that folder.
 Your Nova will grow to contain personal memory and context. Keep it local or
 back it up in a private Git repository. Do not use the public Nova repository
 as its remote. That repository distributes Nova itself, not your personal data.
+
+### Automatic Git safety checks
+
+New installations enable local Git safeguards automatically:
+
+```text
+git add .      → stages files without uploading them
+git commit     → checks staged filenames and content before committing
+git push       → checks the full local history and approved backup remote
+```
+
+The first push to a backup remote is blocked until you review and approve it:
+
+```sh
+sh bin/nova-safety approve origin
+git push
+```
+
+When GitHub CLI is installed and authenticated, Nova verifies that a GitHub
+remote is private. Otherwise, it requires an explicit private-repository
+confirmation. Approval is tied to the exact remote URL, so changing the URL
+requires another review.
+
+The built-in scanner catches common credentials, private keys, credential
+files, and secrets retained in Git history. It does not understand every secret
+format or decide whether ordinary documents are confidential. Treat it as a
+safety net, not permission to publish a working Nova. Run a manual check with:
+
+```sh
+sh bin/nova-safety check
+```
 
 ## Skills
 
@@ -226,14 +257,15 @@ updates:
 
 ## Current scope
 
-Nova `0.1.6` is tested with Codex and Claude Code on macOS and Linux. It includes
+Nova `0.1.7` is tested with Codex and Claude Code on macOS and Linux. It includes
 shared memory, second-brain knowledge, reusable skills, project-local hooks, and
-autonomous skill learning with optional write approval.
+autonomous skill learning with optional write approval, and local Git safety
+checks before commits and pushes.
 
 Other operating systems and coding agents have not been tested yet. A web
-interface, automatic upgrades, and built-in secret scanning are not part of
-this release. Python is used only for development tests in the source
-repository; it is not required by or included with an installed Nova.
+interface and automatic upgrades are not part of this release. Python is used
+only for development tests in the source repository; it is not required by or
+included with an installed Nova.
 
 ## Updating Nova
 

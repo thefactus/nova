@@ -430,15 +430,26 @@ mark_periodic_review_when_due() {
   trap - EXIT HUP INT TERM
 }
 
+git_safety_hook_context() {
+  [ -x bin/nova-safety ] || return 0
+  [ ! -f .nova-public-source ] || return 0
+
+  configured_hooks_path=$(git config --local --get core.hooksPath 2>/dev/null || true)
+  [ "$configured_hooks_path" = .githooks ] && return 0
+
+  printf '%s' '\n\nNova Git safety hooks are not active. Tell the owner once in your first response and offer to run `sh bin/nova-safety enable`. Preserve any existing custom `core.hooksPath`; never replace it silently.'
+}
+
 case "${1:-}" in
   session-start)
     build_skill_index
+    git_safety_context=$(git_safety_hook_context)
     if check_for_nova_update; then
       update_context='\n\nNova update available: '"$installed_update_version"' -> '"$available_update_version"'.\nTell the owner once in your first response that their current Nova is '"$installed_update_version"', version '"$available_update_version"' is available, and they can ask you to update it. Do not update automatically.'
     else
       update_context=
     fi
-    printf '%s%s%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Nova operating check:\n- Read memories/USER.md and memories/MEMORY.md before substantive work.\n- Use .runtime/skill-index.md to find applicable Nova skills, then load only their canonical SKILL.md files.\n- Nova skills are additive; global, project, plugin, and built-in skills may remain available.\n- Read config.yaml before creating or modifying skills.\n- Use second_brain/ only when deeper project history or decisions are needed.\n- Keep durable knowledge in canonical Nova files.' "$update_context" '"}}'
+    printf '%s%s%s%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Nova operating check:\n- Read memories/USER.md and memories/MEMORY.md before substantive work.\n- Use .runtime/skill-index.md to find applicable Nova skills, then load only their canonical SKILL.md files.\n- Nova skills are additive; global, project, plugin, and built-in skills may remain available.\n- Read config.yaml before creating or modifying skills.\n- Use second_brain/ only when deeper project history or decisions are needed.\n- Keep durable knowledge in canonical Nova files.' "$update_context" "$git_safety_context" '"}}'
     ;;
   prompt-submit)
     record_periodic_turn

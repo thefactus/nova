@@ -39,9 +39,15 @@ jobs:
 
       - name: Validate POSIX shell
         run: |
+          sh -n bin/nova-safety
+          sh -n .githooks/pre-commit
+          sh -n .githooks/pre-push
           sh -n hooks/nova_context.sh
           sh -n install.sh
           sh -n scripts/build-release.sh
+
+      - name: Run Nova safety scan
+        run: sh bin/nova-safety check
 
       - name: Validate JSON
         run: find . -name '*.json' -not -path './.git/*' -exec python -m json.tool '{}' \; >/dev/null
