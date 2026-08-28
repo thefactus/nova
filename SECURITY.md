@@ -44,11 +44,12 @@ to the public Nova repository.
 
 New Nova installations configure `core.hooksPath=.githooks` inside the working
 repository. The pre-commit hook checks staged filenames and content before they
-enter history. The pre-push hook scans every Git object reachable from the
-commits and tags in the requested push, including merge results and commits
-addressed directly by object ID. It also requires each effective destination
-URL to be approved as a private backup remote before the first push. Changing a
-`pushurl` invalidates its approval.
+enter history. The pre-push hook scans the Git objects newly introduced by the
+requested push, including merge results and commits addressed directly by
+object ID. A new branch or destination without a locally available base is
+scanned in full. The hook also requires each effective destination URL to be
+approved as a private backup remote before the first push. Changing a `pushurl`
+invalidates its approval.
 
 Run the review explicitly with:
 
@@ -57,18 +58,18 @@ sh bin/nova-safety approve origin
 ```
 
 When an authenticated GitHub CLI is available, the review verifies GitHub
-visibility directly and the pre-push hook rechecks it with a short timeout.
-Otherwise, it asks the owner to confirm that the remote is private. GitHub
-availability failures do not prevent a push to a previously approved URL.
+visibility directly. Otherwise, it asks the owner to confirm that the remote
+is private. Automatic commit and push hooks make no network requests beyond
+Git's requested push.
 
 The guard is defense in depth, not a security boundary:
 
 - Git allows hooks to be bypassed with `--no-verify`.
 - Pattern matching cannot recognize every credential or determine whether an
   ordinary note, image, PDF, or company document is confidential.
-- Private-remote approval records the effective push URL. GitHub visibility is
-  rechecked when GitHub CLI and the network are available; other visibility
-  changes cannot be monitored automatically.
+- Private-remote approval records the effective push URL. Later visibility
+  changes cannot be monitored automatically, so repository privacy remains the
+  owner's responsibility.
 - Existing custom `core.hooksPath` settings are preserved instead of silently
   replaced, so their owner must integrate the Nova hooks manually.
 

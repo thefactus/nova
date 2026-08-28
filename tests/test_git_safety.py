@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import shutil
 import subprocess
 import tarfile
@@ -25,7 +26,11 @@ class GitSafetyTest(unittest.TestCase):
         *command: str,
         cwd: Path,
         input_text: str | None = None,
+        env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        if env:
+            environment.update(env)
         return subprocess.run(
             command,
             cwd=cwd,
@@ -33,6 +38,7 @@ class GitSafetyTest(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
+            env=environment,
         )
 
     def create_working_nova(self, *, enable_hooks: bool = True) -> Path:
@@ -432,6 +438,106 @@ class GitSafetyTest(unittest.TestCase):
         self.assertNotIn(fake_token, result.stdout + result.stderr)
         self.assertEqual(self.run_command("git", "show-ref", cwd=remote).stdout, "")
 
+    def test_incremental_pre_push_blocks_a_new_secret(self) -> None:
+        working_nova = self.create_working_nova()
+        remote = self.create_bare_remote("incremental-secret.git")
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(remote)],
+            cwd=working_nova,
+            check=True,
+        )
+        approval = self.run_command(
+            "sh",
+            "bin/nova-safety",
+            "approve",
+            "origin",
+            cwd=working_nova,
+            input_text="PRIVATE\n",
+        )
+        self.assertEqual(approval.returncode, 0, approval.stderr)
+        initial_push = self.run_command(
+            "git", "push", "-u", "origin", "main", cwd=working_nova
+        )
+        self.assertEqual(initial_push.returncode, 0, initial_push.stderr)
+
+        fake_token = "ghp_" + ("I" * 36)
+        (working_nova / "incremental.md").write_text(
+            f"temporary token {fake_token}\n", encoding="utf-8"
+        )
+        subprocess.run(["git", "add", "incremental.md"], cwd=working_nova, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "--no-verify", "-m", "Add incremental secret"],
+            cwd=working_nova,
+            check=True,
+        )
+
+        result = self.run_command(
+            "git", "push", "origin", "main", cwd=working_nova
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("GitHub token", result.stderr)
+        self.assertNotIn(fake_token, result.stdout + result.stderr)
+
+    def test_incremental_pre_push_does_not_rescan_objects_already_remote(
+        self,
+    ) -> None:
+        working_nova = self.create_working_nova()
+        remote = self.create_bare_remote("incremental-existing.git")
+        subprocess.run(
+            ["git", "remote", "add", "origin", str(remote)],
+            cwd=working_nova,
+            check=True,
+        )
+        approval = self.run_command(
+            "sh",
+            "bin/nova-safety",
+            "approve",
+            "origin",
+            cwd=working_nova,
+            input_text="PRIVATE\n",
+        )
+        self.assertEqual(approval.returncode, 0, approval.stderr)
+        initial_push = self.run_command(
+            "git", "push", "-u", "origin", "main", cwd=working_nova
+        )
+        self.assertEqual(initial_push.returncode, 0, initial_push.stderr)
+
+        fake_token = "ghp_" + ("O" * 36)
+        (working_nova / "already-remote.md").write_text(
+            f"temporary token {fake_token}\n", encoding="utf-8"
+        )
+        subprocess.run(
+            ["git", "add", "already-remote.md"], cwd=working_nova, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "--no-verify", "-m", "Seed remote object"],
+            cwd=working_nova,
+            check=True,
+        )
+        bypassed_push = self.run_command(
+            "git", "push", "--no-verify", "origin", "main", cwd=working_nova
+        )
+        self.assertEqual(bypassed_push.returncode, 0, bypassed_push.stderr)
+
+        (working_nova / "clean-follow-up.md").write_text(
+            "safe follow-up\n", encoding="utf-8"
+        )
+        subprocess.run(
+            ["git", "add", "clean-follow-up.md"], cwd=working_nova, check=True
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Add clean follow-up"],
+            cwd=working_nova,
+            check=True,
+        )
+
+        result = self.run_command(
+            "git", "push", "origin", "main", cwd=working_nova
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_history_scan_blocks_a_secret_introduced_only_by_a_merge(self) -> None:
         working_nova = self.create_working_nova()
         subprocess.run(
@@ -629,6 +735,64 @@ class GitSafetyTest(unittest.TestCase):
         self.assertIn(str(push_remote), approval.stdout)
         self.assertNotIn(str(fetch_remote), approval.stdout)
         self.assertEqual(pushed.returncode, 0, pushed.stderr)
+
+    def test_pre_push_does_not_call_github_cli_after_approval(self) -> None:
+        working_nova = self.create_working_nova()
+        fake_bin = self.temporary_path / "fake-bin"
+        fake_bin.mkdir()
+        gh_called = self.temporary_path / "gh-called"
+        fake_gh = fake_bin / "gh"
+        fake_gh.write_text(
+            "#!/bin/sh\n: > \"$NOVA_TEST_GH_CALLED\"\nexit 1\n",
+            encoding="utf-8",
+        )
+        fake_gh.chmod(0o755)
+        environment = {
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+            "NOVA_TEST_GH_CALLED": str(gh_called),
+        }
+        subprocess.run(
+            [
+                "git",
+                "remote",
+                "add",
+                "origin",
+                "https://github.com/example/private-nova.git",
+            ],
+            cwd=working_nova,
+            check=True,
+        )
+
+        approval = self.run_command(
+            "sh",
+            "bin/nova-safety",
+            "approve",
+            "origin",
+            cwd=working_nova,
+            input_text="PRIVATE\n",
+            env=environment,
+        )
+        self.assertEqual(approval.returncode, 0, approval.stderr)
+        self.assertTrue(gh_called.exists())
+        gh_called.unlink()
+        local_oid = self.run_command(
+            "git", "rev-parse", "HEAD", cwd=working_nova
+        ).stdout.strip()
+        update = f"refs/heads/main {local_oid} refs/heads/main {'0' * len(local_oid)}\n"
+
+        result = self.run_command(
+            "sh",
+            "bin/nova-safety",
+            "pre-push",
+            "origin",
+            "https://github.com/example/private-nova.git",
+            cwd=working_nova,
+            input_text=update,
+            env=environment,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(gh_called.exists())
 
     def test_adding_an_unapproved_pushurl_blocks_every_destination(self) -> None:
         working_nova = self.create_working_nova()

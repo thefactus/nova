@@ -193,8 +193,9 @@ scan_staged_changes() {
 }
 
 scan_reachable_objects() {
-  tips_file=$1
-  [ -s "$tips_file" ] || return 0
+  revisions_file=$1
+  positive_tips_file=${2:-$1}
+  [ -s "$revisions_file" ] || return 0
 
   create_temporary_directory
   object_listing=$safety_temporary_directory/object-listing
@@ -209,13 +210,13 @@ scan_reachable_objects() {
   : > "$historical_paths"
 
   if ! git rev-list --objects --no-object-names --stdin \
-    < "$tips_file" > "$object_listing"; then
+    < "$revisions_file" > "$object_listing"; then
     fail "could not enumerate Git objects"
   fi
   sed '/^$/d' "$object_listing" | sort -u > "$object_ids"
 
   if ! git -c core.quotePath=false log --stdin -m --name-only --format= -- \
-    < "$tips_file" > "$historical_paths"; then
+    < "$revisions_file" > "$historical_paths"; then
     fail "could not enumerate paths in Git history"
   fi
 
@@ -239,7 +240,7 @@ scan_reachable_objects() {
         fail "unsupported Git tip type: $peeled_type"
         ;;
     esac
-  done < "$tips_file"
+  done < "$positive_tips_file"
 
   sort -u "$historical_paths" -o "$historical_paths"
   blocked=false
@@ -311,6 +312,13 @@ validate_remote_name() {
   remote_name=$1
   case "$remote_name" in
     ''|*[!A-Za-z0-9._-]*) fail "unsupported remote name: $remote_name" ;;
+  esac
+}
+
+is_zero_oid() {
+  case "$1" in
+    ''|*[!0]*) return 1 ;;
+    *) return 0 ;;
   esac
 }
 
@@ -490,7 +498,9 @@ pre_push() {
   [ -s "$current_push_urls" ] || \
     fail "remote has no push URL: $remote_name"
   outgoing_tips=$safety_temporary_directory/outgoing-tips
+  outgoing_revisions=$safety_temporary_directory/outgoing-revisions
   : > "$outgoing_tips"
+  : > "$outgoing_revisions"
   while IFS=' ' read -r local_ref local_oid remote_ref remote_oid extra; do
     [ -n "$local_ref$local_oid$remote_ref$remote_oid$extra" ] || continue
     [ -z "$extra" ] || fail "could not parse the pre-push update list"
@@ -500,12 +510,21 @@ pre_push() {
     case "$local_oid" in
       *[!0-9a-fA-F]*) fail "pre-push supplied an invalid object ID" ;;
     esac
-    if ! printf '%s\n' "$local_oid" | grep -Eq '^0+$'; then
+    case "$remote_oid" in
+      *[!0-9a-fA-F]*) fail "pre-push supplied an invalid remote object ID" ;;
+    esac
+    if ! is_zero_oid "$local_oid"; then
       printf '%s\n' "$local_oid" >> "$outgoing_tips"
+      printf '%s\n' "$local_oid" >> "$outgoing_revisions"
+      if ! is_zero_oid "$remote_oid" && \
+         git cat-file -e "$remote_oid" 2>/dev/null; then
+        printf '^%s\n' "$remote_oid" >> "$outgoing_revisions"
+      fi
     fi
   done
   sort -u "$outgoing_tips" -o "$outgoing_tips"
-  scan_reachable_objects "$outgoing_tips"
+  sort -u "$outgoing_revisions" -o "$outgoing_revisions"
+  scan_reachable_objects "$outgoing_revisions" "$outgoing_tips"
 
   if is_official_public_source "$remote_name" "$current_push_urls" "$outgoing_tips"; then
     return 0
@@ -527,14 +546,6 @@ pre_push() {
     return 1
   fi
 
-  while IFS= read -r current_push_url; do
-    if verify_github_private_when_possible "$current_push_url"; then
-      :
-    else
-      verification_status=$?
-      [ "$verification_status" -ne 1 ] || return 1
-    fi
-  done < "$current_push_urls"
 }
 
 usage() {
